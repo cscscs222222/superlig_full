@@ -244,7 +244,6 @@ $benim_macim_var_mi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta=$h
             $tab_icons = ['po'=>'fa-shield-halved','s16'=>'fa-trophy','cf'=>'fa-star','yf'=>'fa-fire','f'=>'fa-crown'];
             foreach($asama_map as $key => $data): 
                 $is_locked = false;
-                if($key=='po' && $hafta > 10) $locked_icon = '';
                 if($key=='s16' && $hafta < 11) $is_locked = true;
                 if($key=='cf' && $hafta < 13) $is_locked = true;
                 if($key=='yf' && $hafta < 15) $is_locked = true;

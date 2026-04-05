@@ -70,7 +70,7 @@ function uefa_puani_ekle($pdo, $takim_id, $puan) {
 }
 
 $cl_takim_sayisi = $pdo->query("SELECT COUNT(*) FROM cl_takimlar")->fetchColumn();
-if ($cl_takim_sayisi < 26) {
+if ($cl_takim_sayisi < 25) {
     $devler = [
         ['Real Madrid', 'https://cdn-icons-png.flaticon.com/512/5041/5041042.png', 95, 92],
         ['Manchester City', 'https://cdn-icons-png.flaticon.com/512/825/825501.png', 96, 90],
@@ -88,12 +88,12 @@ if ($cl_takim_sayisi < 26) {
         ['Napoli', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 86, 88],
         ['Chelsea', 'https://cdn-icons-png.flaticon.com/512/825/825532.png', 88, 87],
         ['Man United', 'https://cdn-icons-png.flaticon.com/512/825/825503.png', 87, 85],
-        ['Porto', 'https://cdn-icons-png.flaticon.com/512/5041/5041042.png', 84, 85],
+        ['Porto', 'https://cdn-icons-png.flaticon.com/512/5041/5041047.png', 84, 85],
         ['Benfica', 'https://cdn-icons-png.flaticon.com/512/825/825553.png', 83, 82],
-        ['Ajax', 'https://cdn-icons-png.flaticon.com/512/825/825503.png', 82, 80],
-        ['PSV', 'https://cdn-icons-png.flaticon.com/512/825/825501.png', 81, 79],
+        ['Ajax', 'https://cdn-icons-png.flaticon.com/512/5041/5041056.png', 82, 80],
+        ['PSV', 'https://cdn-icons-png.flaticon.com/512/5041/5041049.png', 81, 79],
         ['Sevilla', 'https://cdn-icons-png.flaticon.com/512/5041/5041045.png', 80, 81],
-        ['Sporting CP', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 79, 80],
+        ['Sporting CP', 'https://cdn-icons-png.flaticon.com/512/5041/5041071.png', 79, 80],
         ['Celtic', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 78, 77],
         ['Club Brugge', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 77, 78],
     ];
