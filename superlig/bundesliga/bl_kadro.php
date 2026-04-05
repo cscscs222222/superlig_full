@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// BUNDESLIGA - KADRO VE TAKTİK MERKEZİ (RED & GOLD SPANISH THEME)
+// BUNDESLIGA - KADRO VE TAKTİK MERKEZİ (RED & BLACK GERMAN THEME)
 // ==============================================================================
 include '../db.php';
 

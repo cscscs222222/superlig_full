@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// BUNDESLIGA - İSTATİSTİK VE VERİ MERKEZİ (RED & GOLD SPANISH THEME)
+// BUNDESLIGA - İSTATİSTİK VE VERİ MERKEZİ (RED & BLACK GERMAN THEME)
 // ==============================================================================
 include '../db.php';
 
@@ -210,7 +210,7 @@ try {
                 <div class="panel-card" style="height: 100%;">
                     <div class="panel-header">
                         <span class="font-oswald text-white fs-5"><i class="fa-solid fa-list-ol me-2" style="color:var(--de-secondary);"></i> BUNDESLIGA TABELLE</span>
-                        <span class="badge bg-dark border text-white" style="border-color: var(--de-primary) !important;">Spieltag <?= $hafta > 38 ? 38 : $hafta ?></span>
+                        <span class="badge bg-dark border text-white" style="border-color: var(--de-primary) !important;">Spieltag <?= $hafta > 34 ? 34 : $hafta ?></span>
                     </div>
                     
                     <div class="table-responsive p-0" style="flex: 1;">

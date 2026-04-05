@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// BUNDESLIGA - TRANSFER BORSASI (RED & GOLD SPANISH THEME)
+// BUNDESLIGA - TRANSFER BORSASI (RED & BLACK GERMAN THEME)
 // ==============================================================================
 include '../db.php';
 

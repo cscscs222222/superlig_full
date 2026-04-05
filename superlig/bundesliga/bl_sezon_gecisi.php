@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// BUNDESLIGA - SEZON SONU KUTLAMASI VE YENİ SEZON GEÇİŞİ (RED & GOLD SPANISH THEME)
+// BUNDESLIGA - SEZON SONU KUTLAMASI VE YENİ SEZON GEÇİŞİ (RED & BLACK GERMAN THEME)
 // ==============================================================================
 include '../db.php';
 

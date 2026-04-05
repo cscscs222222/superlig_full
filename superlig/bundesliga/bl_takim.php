@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// BUNDESLIGA - TAKIM PROFİLİ VE SCOUT EKRANI (RED & GOLD SPANISH THEME)
+// BUNDESLIGA - TAKIM PROFİLİ VE SCOUT EKRANI (RED & BLACK GERMAN THEME)
 // ==============================================================================
 include '../db.php';
 

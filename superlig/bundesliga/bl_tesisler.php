@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// BUNDESLIGA - KULÜP TESİSLERİ VE ALTYAPI MERKEZİ (RED & GOLD SPANISH THEME)
+// BUNDESLIGA - KULÜP TESİSLERİ VE ALTYAPI MERKEZİ (RED & BLACK GERMAN THEME)
 // ==============================================================================
 include '../db.php';
 
@@ -62,7 +62,7 @@ if(isset($_POST['altyapi_gelistir'])) {
     }
 }
 
-// ALTYAPIDAN OYUNCU ÇIKARMA (İSPANYOL İSİMLERİ)
+// ALTYAPIDAN OYUNCU ÇIKARMA (ALMAN İSİMLERİ)
 if(isset($_POST['genc_cikar'])) {
     $scout_maliyeti = 2000000; // Scout maliyeti 2M
 
@@ -227,7 +227,7 @@ function paraFormatla($sayi) {
                     
                     <div class="d-flex gap-2 mt-3">
                         <form method="POST" class="w-50">
-                            <button type="submit" name="altyapi_gelistir" class="btn-upgrade" style="background: rgba(0,0,0,0.5); border: 1px solid var(--de-secondary); color: var(--de-secondary);" onclick="return confirm('La Masía\'yı geliştirmek için €<?= number_format(($takim['altyapi_seviye']*12), 1) ?>M harcanacak. Bestätigen?');">
+                            <button type="submit" name="altyapi_gelistir" class="btn-upgrade" style="background: rgba(0,0,0,0.5); border: 1px solid var(--de-secondary); color: var(--de-secondary);" onclick="return confirm('Nachwuchszentrum\'u geliştirmek için €<?= number_format(($takim['altyapi_seviye']*12), 1) ?>M harcanacak. Bestätigen?');">
                                 Geliştir (€<?= number_format(($takim['altyapi_seviye']*12), 1) ?>M)
                             </button>
                         </form>

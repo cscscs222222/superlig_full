@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// BUNDESLIGA - ANA MERKEZ VE FİKSTÜR (RED & GOLD SPANISH THEME)
+// BUNDESLIGA - ANA MERKEZ VE FİKSTÜR (RED & BLACK GERMAN THEME)
 // ==============================================================================
 include '../db.php';
 
@@ -46,9 +46,9 @@ try {
     if($ayar_sayisi == 0) { $pdo->exec("INSERT INTO de_ayar (hafta, sezon_yil) VALUES (1, 2025)"); }
 } catch (Throwable $e) {}
 
-// --- BUNDESLIGA TAKIMLARINI OLUŞTUR (20 TAKIM) ---
-$es_takim_sayisi = $pdo->query("SELECT COUNT(*) FROM de_takimlar")->fetchColumn();
-if ($es_takim_sayisi < 20) {
+// --- BUNDESLIGA TAKIMLARINI OLUŞTUR (18 TAKIM) ---
+$de_takim_sayisi = $pdo->query("SELECT COUNT(*) FROM de_takimlar")->fetchColumn();
+if ($de_takim_sayisi < 18) {
     $almanya_devleri = [
     ['Bayern München',          'https://tmssl.akamaized.net/images/wappen/head/27.png',    92, 90],
     ['Borussia Dortmund',       'https://tmssl.akamaized.net/images/wappen/head/16.png',    86, 82],
@@ -299,7 +299,7 @@ if($kullanici_takim) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* BUNDESLIGA TEMASI (KIRMIZI, ALTIN, ISPANYA) */
+        /* BUNDESLIGA TEMASI (KIRMIZI, SİYAH, ALMANYA) */
         :root {
             --de-primary: #e11d48;   /* Almanya Kırmızısı */
             --de-secondary: #dc2626; /* Altın Sarısı */
@@ -490,7 +490,7 @@ if($kullanici_takim) {
                                         $row_class = "";
                                         if($sira <= 4) $row_class = "zone-cl";    // Şampiyonlar Ligi
                                         elseif($sira == 5 || $sira == 6) $row_class = "zone-el"; // Avrupa Ligi / Konferans
-                                        elseif($sira >= 18) $row_class = "zone-rel"; // Küme Düşme
+                                        elseif($sira >= 16) $row_class = "zone-rel"; // Küme Düşme
                                         
                                         $av = $t['atilan_gol'] - $t['yenilen_gol'];
                                     ?>
@@ -516,7 +516,7 @@ if($kullanici_takim) {
                         <div class="p-3 border-top" style="border-color:var(--border-color); font-size:0.8rem; background:rgba(0,0,0,0.5);">
                             <span style="color:var(--de-secondary);"><i class="fa-solid fa-square"></i> 1-4: Şampiyonlar Ligi</span>
                             <span class="ms-3 text-warning"><i class="fa-solid fa-square"></i> 5-6: Avrupa Kupası</span>
-                            <span class="ms-3" style="color:var(--de-primary);"><i class="fa-solid fa-square"></i> 18-20: Küme Düşme</span>
+                            <span class="ms-3" style="color:var(--de-primary);"><i class="fa-solid fa-square"></i> 16-18: Küme Düşme</span>
                         </div>
                     </div>
                 </div>
@@ -547,7 +547,7 @@ if($kullanici_takim) {
                                         </div>
                                     </div>
                                     <div class="match-actions">
-                                        <a href="../canli_mac.php?id=<?= $mac['id'] ?>&lig=es&hafta=<?= $goster_hafta ?>" class="action-btn text-success"><i class="fa-solid fa-satellite-dish"></i> CANLI İZLE</a>
+                                        <a href="../canli_mac.php?id=<?= $mac['id'] ?>&lig=de&hafta=<?= $goster_hafta ?>" class="action-btn text-success"><i class="fa-solid fa-satellite-dish"></i> CANLI İZLE</a>
                                     </div>
                                 </div>
                             <?php endforeach; ?>

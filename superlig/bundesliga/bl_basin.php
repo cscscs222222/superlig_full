@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// BUNDESLIGA - MEDYA, PSİKOLOJİ VE BASIN ODASI (RED & GOLD SPANISH THEME)
+// BUNDESLIGA - MEDYA, PSİKOLOJİ VE BASIN ODASI (RED & BLACK GERMAN THEME)
 // ==============================================================================
 include '../db.php';
 
@@ -34,7 +34,7 @@ if(isset($_POST['moralleri_guncelle'])) {
     $mesaj_tipi = "warning";
 }
 
-// --- TAKIMA ESPANYOL YEMEĞİ ---
+// --- TAKIMA ALMAN YEMEĞİ ---
 if(isset($_POST['takim_yemegi'])) {
     $yemek_maliyeti = 800000; // 800K Euro
     if($takim['butce'] >= $yemek_maliyeti) {
@@ -48,7 +48,7 @@ if(isset($_POST['takim_yemegi'])) {
     }
 }
 
-// --- İSPANYOL BASINI İLE TOPLANTI ---
+// --- ALMAN BASINI İLE TOPLANTI ---
 if(isset($_POST['cevap_ver'])) {
     $cevap_id = $_POST['cevap_id'];
     
