@@ -10,77 +10,34 @@ $mesaj_tipi = "";
 // 1. KULLANICININ YÖNETTİĞİ TAKIMLARI GÜVENLİ ŞEKİLDE ÇEK
 $benim_takimlarim = [];
 
+// --- Kullanıcı takımını güvenli şekilde çeken yardımcı fonksiyon ---
+function fetch_kullanici_takimi($pdo, $ayar_tablo, $takim_tablo, $lig_kodu) {
+    $ayar_stmt = $pdo->query("SELECT kullanici_takim_id FROM $ayar_tablo LIMIT 1");
+    $ayar_id = $ayar_stmt ? $ayar_stmt->fetchColumn() : false;
+    if (!$ayar_id) { return null; }
+    $stmt = $pdo->prepare("SELECT id, takim_adi, logo, butce, lig FROM $takim_tablo WHERE id = ?");
+    $stmt->execute([$ayar_id]);
+    $takim = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($takim) { $takim['kaynak'] = $lig_kodu; return $takim; }
+    return null;
+}
+
 // Süper Lig
-try {
-    $ayar_tr = $pdo->query("SELECT kullanici_takim_id FROM ayar LIMIT 1")->fetchColumn();
-    if($ayar_tr) {
-        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM takimlar WHERE id = $ayar_tr")->fetch(PDO::FETCH_ASSOC);
-        if($takim) { $takim['kaynak'] = 'tr'; $benim_takimlarim[] = $takim; }
-    }
-} catch(Throwable $e) {}
-
+try { $t = fetch_kullanici_takimi($pdo, 'ayar', 'takimlar', 'tr'); if($t) $benim_takimlarim[] = $t; } catch(Throwable $e) {}
 // Şampiyonlar Ligi
-try {
-    $ayar_cl = $pdo->query("SELECT kullanici_takim_id FROM cl_ayar LIMIT 1")->fetchColumn();
-    if($ayar_cl) {
-        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM cl_takimlar WHERE id = $ayar_cl")->fetch(PDO::FETCH_ASSOC);
-        if($takim) { $takim['kaynak'] = 'cl'; $benim_takimlarim[] = $takim; }
-    }
-} catch(Throwable $e) {}
-
+try { $t = fetch_kullanici_takimi($pdo, 'cl_ayar', 'cl_takimlar', 'cl'); if($t) $benim_takimlarim[] = $t; } catch(Throwable $e) {}
 // Premier Lig
-try {
-    $ayar_pl = $pdo->query("SELECT kullanici_takim_id FROM pl_ayar LIMIT 1")->fetchColumn();
-    if($ayar_pl) {
-        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM pl_takimlar WHERE id = $ayar_pl")->fetch(PDO::FETCH_ASSOC);
-        if($takim) { $takim['kaynak'] = 'pl'; $benim_takimlarim[] = $takim; }
-    }
-} catch(Throwable $e) {}
-
+try { $t = fetch_kullanici_takimi($pdo, 'pl_ayar', 'pl_takimlar', 'pl'); if($t) $benim_takimlarim[] = $t; } catch(Throwable $e) {}
 // La Liga
-try {
-    $ayar_es = $pdo->query("SELECT kullanici_takim_id FROM es_ayar LIMIT 1")->fetchColumn();
-    if($ayar_es) {
-        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM es_takimlar WHERE id = $ayar_es")->fetch(PDO::FETCH_ASSOC);
-        if($takim) { $takim['kaynak'] = 'es'; $benim_takimlarim[] = $takim; }
-    }
-} catch(Throwable $e) {}
-
+try { $t = fetch_kullanici_takimi($pdo, 'es_ayar', 'es_takimlar', 'es'); if($t) $benim_takimlarim[] = $t; } catch(Throwable $e) {}
 // Bundesliga
-try {
-    $ayar_de = $pdo->query("SELECT kullanici_takim_id FROM de_ayar LIMIT 1")->fetchColumn();
-    if($ayar_de) {
-        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM de_takimlar WHERE id = $ayar_de")->fetch(PDO::FETCH_ASSOC);
-        if($takim) { $takim['kaynak'] = 'de'; $benim_takimlarim[] = $takim; }
-    }
-} catch(Throwable $e) {}
-
+try { $t = fetch_kullanici_takimi($pdo, 'de_ayar', 'de_takimlar', 'de'); if($t) $benim_takimlarim[] = $t; } catch(Throwable $e) {}
 // Ligue 1
-try {
-    $ayar_fr = $pdo->query("SELECT kullanici_takim_id FROM fr_ayar LIMIT 1")->fetchColumn();
-    if($ayar_fr) {
-        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM fr_takimlar WHERE id = $ayar_fr")->fetch(PDO::FETCH_ASSOC);
-        if($takim) { $takim['kaynak'] = 'fr'; $benim_takimlarim[] = $takim; }
-    }
-} catch(Throwable $e) {}
-
+try { $t = fetch_kullanici_takimi($pdo, 'fr_ayar', 'fr_takimlar', 'fr'); if($t) $benim_takimlarim[] = $t; } catch(Throwable $e) {}
 // Serie A
-try {
-    $ayar_it = $pdo->query("SELECT kullanici_takim_id FROM it_ayar LIMIT 1")->fetchColumn();
-    if($ayar_it) {
-        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM it_takimlar WHERE id = $ayar_it")->fetch(PDO::FETCH_ASSOC);
-        if($takim) { $takim['kaynak'] = 'it'; $benim_takimlarim[] = $takim; }
-    }
-} catch(Throwable $e) {}
-
+try { $t = fetch_kullanici_takimi($pdo, 'it_ayar', 'it_takimlar', 'it'); if($t) $benim_takimlarim[] = $t; } catch(Throwable $e) {}
 // Liga NOS
-try {
-    $ayar_pt = $pdo->query("SELECT kullanici_takim_id FROM pt_ayar LIMIT 1")->fetchColumn();
-    if($ayar_pt) {
-        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM pt_takimlar WHERE id = $ayar_pt")->fetch(PDO::FETCH_ASSOC);
-        if($takim) { $takim['kaynak'] = 'pt'; $benim_takimlarim[] = $takim; }
-    }
-} catch(Throwable $e) {}
+try { $t = fetch_kullanici_takimi($pdo, 'pt_ayar', 'pt_takimlar', 'pt'); if($t) $benim_takimlarim[] = $t; } catch(Throwable $e) {}
 
 
 // Tablo Haritalaması

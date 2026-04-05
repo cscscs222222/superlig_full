@@ -108,10 +108,10 @@ include 'db.php';
         .mode-card.pl::before { background-image: url('https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?q=80&w=800'); }
         .mode-card.cl::before { background-image: url('https://images.unsplash.com/photo-1556816214-cb3ce168c076?q=80&w=800'); }
         .mode-card.gl::before { background-image: url('https://images.unsplash.com/photo-1522778526097-ce0a22ceb253?q=80&w=800'); }
-        .mode-card.es::before { background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=800'); }
-        .mode-card.de::before { background-image: url('https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?q=80&w=800'); }
-        .mode-card.fr::before { background-image: url('https://images.unsplash.com/photo-1556816214-cb3ce168c076?q=80&w=800'); }
-        .mode-card.it::before { background-image: url('https://images.unsplash.com/photo-1518605368461-1e1e38ce8ba4?q=80&w=800'); }
+        .mode-card.es::before { background-image: url('https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=800'); }
+        .mode-card.de::before { background-image: url('https://images.unsplash.com/photo-1551958219-acbc595d0b17?q=80&w=800'); }
+        .mode-card.fr::before { background-image: url('https://images.unsplash.com/photo-1508344928928-7137b29de216?q=80&w=800'); }
+        .mode-card.it::before { background-image: url('https://images.unsplash.com/photo-1516382799247-87df95d790b7?q=80&w=800'); }
         .mode-card.pt::before { background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=800'); }
 
         /* Kart Rengi Glow Efektleri (Hover) */
