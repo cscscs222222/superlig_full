@@ -45,13 +45,13 @@ if (isset($_POST['satin_al'])) {
             
             $hafta = $ayar['hafta'];
             $fiyat_milyon = number_format($fiyat/1000000, 1);
-            $haber_metni = "¡TRASPASO! " . $benim_takim['takim_adi'] . " yıldız oyuncu " . $hedef_oyuncu['isim'] . "'i €{$fiyat_milyon}M bonservisle kadrosuna kattı.";
+            $haber_metni = "TRANSFER! " . $benim_takim['takim_adi'] . " yıldız oyuncu " . $hedef_oyuncu['isim'] . "'i €{$fiyat_milyon}M bonservisle kadrosuna kattı.";
             try { 
                 $stmt_haber = $pdo->prepare("INSERT INTO de_haberler (hafta, metin, tip) VALUES (?, ?, 'transfer')");
                 $stmt_haber->execute([$hafta, $haber_metni]);
             } catch(Throwable $e){}
             
-            $mesaj = "¡Fichaje completado! " . $hedef_oyuncu['isim'] . " resmen kulübümüzde.";
+            $mesaj = "Transfer tamam! " . $hedef_oyuncu['isim'] . " resmen kulübümüzde.";
             $mesaj_tipi = "success";
             
             $benim_takim['butce'] -= $fiyat;

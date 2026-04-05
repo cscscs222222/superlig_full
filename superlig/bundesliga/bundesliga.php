@@ -476,7 +476,7 @@ if($kullanici_takim) {
                 <div class="col-xl-7">
                     <div class="panel-card" style="height: 100%;">
                         <div class="panel-header">
-                            <span class="font-oswald text-white fs-5"><i class="fa-solid fa-list-ol me-2" style="color:var(--de-secondary);"></i> CLASIFICACIÓN</span>
+                            <span class="font-oswald text-white fs-5"><i class="fa-solid fa-list-ol me-2" style="color:var(--de-secondary);"></i> TABELLE</span>
                         </div>
                         <div class="table-responsive p-0">
                             <table class="data-table">

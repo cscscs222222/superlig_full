@@ -35,7 +35,7 @@ if (isset($_POST['taktik_kaydet'])) {
     $stmt = $pdo->prepare("UPDATE de_takimlar SET dizilis=?, oyun_tarzi=?, pres=?, tempo=? WHERE id=?");
     $stmt->execute([$dizilis, $oyun_tarzi, $pres, $tempo, $kullanici_takim_id]);
     
-    $mesaj = "Alman taktikleri başarıyla güncellendi! ¡Vamos!";
+    $mesaj = "Alman taktikleri başarıyla güncellendi! Los geht's!";
     $mesaj_tipi = "success";
     
     $takim['dizilis'] = $dizilis; $takim['oyun_tarzi'] = $oyun_tarzi; $takim['pres'] = $pres; $takim['tempo'] = $tempo;
@@ -246,7 +246,7 @@ $takim_kalitesi = $takim_kalitesi ? round($takim_kalitesi, 1) : 0;
                             </select>
                         </div>
                         
-                        <button type="submit" name="taktik_kaydet" class="btn-taktik"><i class="fa-solid fa-satellite-dish"></i> ¡Táctica al Campo!</button>
+                        <button type="submit" name="taktik_kaydet" class="btn-taktik"><i class="fa-solid fa-satellite-dish"></i> Taktik Uygula!</button>
                     </form>
                 </div>
             </div>
@@ -255,7 +255,7 @@ $takim_kalitesi = $takim_kalitesi ? round($takim_kalitesi, 1) : 0;
                 
                 <div class="panel-card mb-4" style="border-color: var(--de-secondary);">
                     <div class="panel-header text-white" style="background: rgba(220, 38, 38, 0.1); border-bottom-color: var(--de-secondary);">
-                        <i class="fa-solid fa-shirt" style="color:var(--de-secondary);"></i> ONCE TITULAR (İlk 11)
+                        <i class="fa-solid fa-shirt" style="color:var(--de-secondary);"></i> STARTELF (İlk 11)
                     </div>
                     <div class="table-responsive">
                         <table class="data-table">
@@ -291,7 +291,7 @@ $takim_kalitesi = $takim_kalitesi ? round($takim_kalitesi, 1) : 0;
 
                 <div class="panel-card mb-4" style="border-color: rgba(251, 191, 36, 0.4);">
                     <div class="panel-header text-warning" style="background: rgba(251, 191, 36, 0.1); border-bottom-color: rgba(251, 191, 36, 0.3);">
-                        <i class="fa-solid fa-chair"></i> SUPLENTES (Yedek Kulübesi)
+                        <i class="fa-solid fa-chair"></i> ERSATZBANK (Yedek Kulübesi)
                     </div>
                     <div class="table-responsive" style="max-height: 350px; overflow-y:auto;">
                         <table class="data-table">
@@ -327,7 +327,7 @@ $takim_kalitesi = $takim_kalitesi ? round($takim_kalitesi, 1) : 0;
 
                 <div class="panel-card" style="border-color: rgba(200, 16, 46, 0.3);">
                     <div class="panel-header" style="background: rgba(200, 16, 46, 0.05); color: var(--de-primary); border-bottom-color: rgba(200, 16, 46, 0.2);">
-                        <i class="fa-solid fa-ban"></i> RESERVAS (Kadro Dışı)
+                        <i class="fa-solid fa-ban"></i> RESERVEN (Kadro Dışı)
                     </div>
                     <div class="table-responsive" style="max-height: 350px; overflow-y:auto;">
                         <table class="data-table">
