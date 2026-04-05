@@ -38,14 +38,18 @@ function get_kazananlar($pdo, $h1, $h2, $sezon_yil) {
 // --- OTOMATİK EŞLEŞME MOTORU (SWISS SİSTEMİ) ---
 // Hafta 9-10: PLAY-OFF – SADECE 9-24. SIRALAR ARASI (ilk 8 direkt Son 16, 25-36 elenir)
 if ($hafta == 9 && !mac_var_mi($pdo, 9, $sezon_yili)) {
+    // Sıralama 9-24: 9-16 seri başı (seeded), 17-24 seri başı olmayan (unseeded)
     $takimlar = array_map('intval', $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC LIMIT 8, 16")->fetchAll(PDO::FETCH_COLUMN));
     $n = count($takimlar);
     if($n == 16) {
         $yari = $n / 2;
         for($i=0; $i<$yari; $i++) {
-            $ev = $takimlar[$i]; $dep = $takimlar[$n-1-$i];
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($ev, $dep, 9, $sezon_yili)");
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($dep, $ev, 10, $sezon_yili)");
+            $seeded   = $takimlar[$i];       // Sıra 9-16 (seri başı, daha yüksek sıralı)
+            $unseeded = $takimlar[$n-1-$i];  // Sıra 17-24 (seri başı olmayan, daha düşük sıralı)
+            // 1. Maç (Hafta 9): Düşük sıralı (unseeded) takımın evinde
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($unseeded, $seeded, 9, $sezon_yili)");
+            // Rövanş (Hafta 10): Yüksek sıralı (seeded) takımın evinde
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($seeded, $unseeded, 10, $sezon_yili)");
         }
     }
 }

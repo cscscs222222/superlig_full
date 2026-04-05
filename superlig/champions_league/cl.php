@@ -69,59 +69,31 @@ function uefa_puani_ekle($pdo, $takim_id, $puan) {
     } catch(Throwable $e) {}
 }
 
-$cl_takim_sayisi = $pdo->query("SELECT COUNT(*) FROM cl_takimlar")->fetchColumn();
-if ($cl_takim_sayisi == 0) {
-    $devler = [
-        ['Real Madrid', 'https://cdn-icons-png.flaticon.com/512/5041/5041042.png', 95, 92],
-        ['Manchester City', 'https://cdn-icons-png.flaticon.com/512/825/825501.png', 96, 90],
-        ['Bayern Münih', 'https://cdn-icons-png.flaticon.com/512/5041/5041050.png', 94, 90],
-        ['Barcelona', 'https://cdn-icons-png.flaticon.com/512/5041/5041040.png', 92, 88],
-        ['Liverpool', 'https://cdn-icons-png.flaticon.com/512/825/825553.png', 93, 91],
-        ['Paris SG', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 91, 88],
-        ['Inter Milan', 'https://cdn-icons-png.flaticon.com/512/5041/5041060.png', 90, 92],
-        ['Juventus', 'https://cdn-icons-png.flaticon.com/512/5041/5041063.png', 88, 90],
-        ['AC Milan', 'https://cdn-icons-png.flaticon.com/512/5041/5041065.png', 89, 87],
-        ['Arsenal', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 92, 90],
-        ['B. Dortmund', 'https://cdn-icons-png.flaticon.com/512/5041/5041052.png', 88, 86],
-        ['A. Madrid', 'https://cdn-icons-png.flaticon.com/512/5041/5041045.png', 87, 89],
-        ['Leverkusen', 'https://cdn-icons-png.flaticon.com/512/5041/5041055.png', 89, 86],
-        ['Napoli', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 86, 88],
-        ['Chelsea', 'https://cdn-icons-png.flaticon.com/512/825/825532.png', 88, 87],
-        ['Man United', 'https://cdn-icons-png.flaticon.com/512/825/825503.png', 87, 85],
-        ['Porto', 'https://cdn-icons-png.flaticon.com/512/5041/5041047.png', 84, 85],
-        ['Benfica', 'https://cdn-icons-png.flaticon.com/512/825/825553.png', 83, 82],
-        ['Ajax', 'https://cdn-icons-png.flaticon.com/512/5041/5041056.png', 82, 80],
-        ['PSV', 'https://cdn-icons-png.flaticon.com/512/5041/5041049.png', 81, 79],
-        ['Sevilla', 'https://cdn-icons-png.flaticon.com/512/5041/5041045.png', 80, 81],
-        ['Sporting CP', 'https://cdn-icons-png.flaticon.com/512/5041/5041071.png', 79, 80],
-        ['Celtic', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 78, 77],
-        ['Club Brugge', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 77, 78],
-        ['RB Leipzig', 'https://cdn-icons-png.flaticon.com/512/5041/5041052.png', 85, 83],
-        ['Tottenham', 'https://cdn-icons-png.flaticon.com/512/825/825503.png', 84, 82],
-        ['Aston Villa', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 83, 81],
-        ['Feyenoord', 'https://cdn-icons-png.flaticon.com/512/5041/5041049.png', 80, 79],
-        ['Monaco', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 79, 78],
-        ['Atalanta', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 83, 80],
-        ['Brest', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 75, 74],
-        ['Sturm Graz', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 73, 72],
-        ['Slovan Bratislava', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 71, 70],
-        ['Girona', 'https://cdn-icons-png.flaticon.com/512/5041/5041040.png', 76, 75],
-        ['Shakhtar', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 78, 76],
-        ['Red Star', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 74, 73],
-    ];
-    foreach($devler as $d) {
-        $ad = $d[0]; $logo = $d[1]; $huc = $d[2]; $sav = $d[3];
-        $var_mi = $pdo->query("SELECT COUNT(*) FROM cl_takimlar WHERE takim_adi = '$ad'")->fetchColumn();
-        if($var_mi == 0) {
-            $pdo->exec("INSERT INTO cl_takimlar (takim_adi, logo, hucum, savunma, butce, lig) VALUES ('$ad', '$logo', $huc, $sav, 100000000, 'Avrupa')");
-            $yeni_id = $pdo->lastInsertId();
-            for($i=0; $i<18; $i++) {
-                $isim = $ad . " Yıldızı " . ($i+1);
-                $mevkiler = ['K', 'D', 'D', 'D', 'D', 'OS', 'OS', 'OS', 'F', 'F', 'F', 'D', 'OS', 'F', 'K', 'OS', 'D', 'F'];
-                $pdo->exec("INSERT INTO cl_oyuncular (takim_id, isim, mevki, ovr, yas, fiyat, lig, ilk_11, yedek) VALUES ($yeni_id, '$isim', '{$mevkiler[$i]}', ".rand($sav-5, $huc+3).", 25, 30000000, 'Avrupa', ".($i<11?1:0).", ".($i>=11?1:0).")");
-            }
-        }
+// ============================================================
+// KRİTİK: FAZLADAN (DUMMY) TAKIMLARI TEMİZLE VE 36 TAKIMI DOĞRULA
+// ============================================================
+// Dummy takım tespiti: eklenme şablonu "TakımAdı Yıldızı N" (N=1..18) olan oyunculara sahip takımlar
+try {
+    $dummy_ids = $pdo->query(
+        "SELECT DISTINCT takim_id FROM cl_oyuncular
+         WHERE isim REGEXP '.+ Yıldızı [0-9]+$'"
+    )->fetchAll(PDO::FETCH_COLUMN);
+    if (!empty($dummy_ids)) {
+        $ids_str = implode(',', array_map('intval', $dummy_ids));
+        $pdo->exec("DELETE FROM cl_oyuncular WHERE takim_id IN ($ids_str)");
+        $pdo->exec("DELETE FROM cl_takimlar WHERE id IN ($ids_str)");
     }
+} catch(Throwable $e) {}
+
+$cl_takim_sayisi = (int)$pdo->query("SELECT COUNT(*) FROM cl_takimlar")->fetchColumn();
+if ($cl_takim_sayisi !== 36) {
+    $sayi_html = htmlspecialchars((string)$cl_takim_sayisi, ENT_QUOTES, 'UTF-8');
+    die("<div style='background:#0d1a38;color:#ef4444;font-family:sans-serif;padding:60px;text-align:center;min-height:100vh;'>
+        <h1 style='font-size:3rem;'>&#9888; KRİTİK HATA</h1>
+        <p style='font-size:1.4rem;margin-top:20px;'>Şampiyonlar Ligi'nde tam olarak <strong>36 takım</strong> olmalıdır.</p>
+        <p style='font-size:1.2rem;color:#fbbf24;'>Mevcut takım sayısı: <strong>" . $sayi_html . "</strong></p>
+        <p style='font-size:1rem;color:#94a3b8;margin-top:20px;'>Lütfen veritabanınızı kontrol edin ve 36 gerçek takımın mevcut olduğundan emin olun.</p>
+    </div>");
 }
 
 function garanti_olay_uret($pdo, $takim_id, $skor) {
@@ -160,24 +132,50 @@ $mac_sayisi = 0;
 try { $mac_sayisi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE sezon_yil = $sezon_yili")->fetchColumn(); } catch(Throwable $e){}
 
 if($mac_sayisi == 0) {
-    $takimlar = $pdo->query("SELECT id FROM cl_takimlar ORDER BY RAND()")->fetchAll(PDO::FETCH_COLUMN);
-    if(count($takimlar) > 1) {
-        if(count($takimlar) % 2 != 0) $takimlar[] = 0;
-        $t_sayisi = count($takimlar); $yari = $t_sayisi - 1; $m_sayisi = $t_sayisi / 2;
+    // 36 takım zaten doğrulandı; tüm 8 haftalık fikstürü oluştur
+    $ids = $pdo->query("SELECT id FROM cl_takimlar ORDER BY RAND()")->fetchAll(PDO::FETCH_COLUMN);
+    $ids = array_map('intval', $ids);
+    $n = count($ids); // 36
 
-        for ($h = 1; $h <= min(8, $yari); $h++) {
-            for ($i = 0; $i < $m_sayisi; $i++) {
-                $ev = $takimlar[$i]; $dep = $takimlar[$t_sayisi - 1 - $i];
-                if ($ev != 0 && $dep != 0) {
-                    if ($i % 2 == 0) { $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($ev, $dep, $h, $sezon_yili)"); } 
-                    else { $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($dep, $ev, $h, $sezon_yili)"); }
-                }
+    // Round-robin döngüsü ile 8 haftalık eşleşmeleri oluştur
+    $arr = $ids;
+    $all_matchups = [];
+    for ($h = 1; $h <= 8; $h++) {
+        $round = [];
+        for ($i = 0; $i < $n / 2; $i++) {
+            $t1 = $arr[$i];
+            $t2 = $arr[$n - 1 - $i];
+            if ($t1 > 0 && $t2 > 0) {
+                $round[] = [$t1, $t2];
             }
-            $son = array_pop($takimlar); array_splice($takimlar, 1, 0, [$son]);
         }
-        $pdo->exec("INSERT INTO cl_haberler (hafta, metin, tip) VALUES (1, 'Şampiyonlar Ligi kuraları çekildi. Macera başlıyor!', 'sistem')");
-        header("Location: cl.php"); exit;
+        $all_matchups[$h] = $round;
+        // Birinci eleman sabit, diğerleri döner
+        $last = array_pop($arr);
+        array_splice($arr, 1, 0, [$last]);
     }
+
+    // Ev/Deplasman ataması: her takımın tam 4 ev 4 deplasman maçı olması için açgözlü algoritma
+    $home_count = array_fill_keys($ids, 0);
+    foreach ($all_matchups as $h => $round) {
+        foreach ($round as [$t1, $t2]) {
+            $h1 = $home_count[$t1];
+            $h2 = $home_count[$t2];
+            if ($h1 < $h2) {
+                $ev = $t1; $dep = $t2;
+            } elseif ($h2 < $h1) {
+                $ev = $t2; $dep = $t1;
+            } else {
+                // Eşit sayıda ev maçı: takım ID + hafta kombinasyonuna göre belirle (tüm takımlara dengeli dağılım)
+                $ev = (($t1 + $h) % 2 == 0) ? $t1 : $t2;
+                $dep = (($t1 + $h) % 2 == 0) ? $t2 : $t1;
+            }
+            $home_count[$ev]++;
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($ev, $dep, $h, $sezon_yili)");
+        }
+    }
+    $pdo->exec("INSERT INTO cl_haberler (hafta, metin, tip) VALUES (1, 'Şampiyonlar Ligi kuraları çekildi. Macera başlıyor!', 'sistem')");
+    header("Location: cl.php"); exit;
 }
 
 if(isset($_GET['action'])) {
