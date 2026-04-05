@@ -310,6 +310,8 @@ if($kullanici_takim) {
         /* NAVBAR */
         .pro-navbar { background: rgba(61, 25, 91, 0.95); backdrop-filter: blur(24px); border-bottom: 2px solid var(--pl-secondary); position: sticky; top: 0; z-index: 1000; padding: 0 2rem; height: 75px; display: flex; justify-content: space-between; align-items: center;}
         .nav-brand { display: flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 900; color: #fff; text-decoration: none; text-shadow: 0 0 10px var(--pl-pink); }
+        .nav-brand img.league-logo { height: 38px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); transition: transform 0.3s ease; }
+        .nav-brand:hover img.league-logo { transform: scale(1.1); }
         .nav-brand i { color: var(--pl-secondary); }
         .nav-link-item { color: var(--text-muted); font-weight: 600; font-size: 0.95rem; padding: 8px 16px; text-decoration: none; transition: 0.2s; }
         .nav-link-item:hover { color: var(--pl-secondary); text-shadow: 0 0 10px var(--pl-secondary); }
@@ -395,7 +397,12 @@ if($kullanici_takim) {
 <body>
 
     <nav class="pro-navbar">
-        <a href="premier_lig.php" class="nav-brand"><i class="fa-solid fa-crown"></i> <span class="font-oswald">PREMIER LEAGUE</span></a>
+        <a href="premier_lig.php" class="nav-brand">
+            <img src="https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Premier_League_Logo.svg/200px-Premier_League_Logo.svg.png"
+                 alt="Premier League" class="league-logo"
+                 onerror="this.style.display='none'">
+            <span class="font-oswald">PREMIER LEAGUE</span>
+        </a>
         
         <div class="nav-menu d-none d-lg-flex gap-3">
             <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez Hub</a>
