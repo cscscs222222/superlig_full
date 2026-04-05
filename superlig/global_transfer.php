@@ -37,61 +37,139 @@ try {
     }
 } catch(Throwable $e) {}
 
+// La Liga
+try {
+    $ayar_es = $pdo->query("SELECT kullanici_takim_id FROM es_ayar LIMIT 1")->fetchColumn();
+    if($ayar_es) {
+        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM es_takimlar WHERE id = $ayar_es")->fetch(PDO::FETCH_ASSOC);
+        if($takim) { $takim['kaynak'] = 'es'; $benim_takimlarim[] = $takim; }
+    }
+} catch(Throwable $e) {}
+
+// Bundesliga
+try {
+    $ayar_de = $pdo->query("SELECT kullanici_takim_id FROM de_ayar LIMIT 1")->fetchColumn();
+    if($ayar_de) {
+        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM de_takimlar WHERE id = $ayar_de")->fetch(PDO::FETCH_ASSOC);
+        if($takim) { $takim['kaynak'] = 'de'; $benim_takimlarim[] = $takim; }
+    }
+} catch(Throwable $e) {}
+
+// Ligue 1
+try {
+    $ayar_fr = $pdo->query("SELECT kullanici_takim_id FROM fr_ayar LIMIT 1")->fetchColumn();
+    if($ayar_fr) {
+        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM fr_takimlar WHERE id = $ayar_fr")->fetch(PDO::FETCH_ASSOC);
+        if($takim) { $takim['kaynak'] = 'fr'; $benim_takimlarim[] = $takim; }
+    }
+} catch(Throwable $e) {}
+
+// Serie A
+try {
+    $ayar_it = $pdo->query("SELECT kullanici_takim_id FROM it_ayar LIMIT 1")->fetchColumn();
+    if($ayar_it) {
+        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM it_takimlar WHERE id = $ayar_it")->fetch(PDO::FETCH_ASSOC);
+        if($takim) { $takim['kaynak'] = 'it'; $benim_takimlarim[] = $takim; }
+    }
+} catch(Throwable $e) {}
+
+// Liga NOS
+try {
+    $ayar_pt = $pdo->query("SELECT kullanici_takim_id FROM pt_ayar LIMIT 1")->fetchColumn();
+    if($ayar_pt) {
+        $takim = $pdo->query("SELECT id, takim_adi, logo, butce, lig FROM pt_takimlar WHERE id = $ayar_pt")->fetch(PDO::FETCH_ASSOC);
+        if($takim) { $takim['kaynak'] = 'pt'; $benim_takimlarim[] = $takim; }
+    }
+} catch(Throwable $e) {}
+
 
 // Tablo Haritalaması
-$tbl_oyuncu = ['tr' => 'oyuncular', 'cl' => 'cl_oyuncular', 'pl' => 'pl_oyuncular'];
-$tbl_takim = ['tr' => 'takimlar', 'cl' => 'cl_takimlar', 'pl' => 'pl_takimlar'];
+$tbl_oyuncu = [
+    'tr' => 'oyuncular',    'cl' => 'cl_oyuncular', 'pl' => 'pl_oyuncular',
+    'es' => 'es_oyuncular', 'de' => 'de_oyuncular', 'fr' => 'fr_oyuncular',
+    'it' => 'it_oyuncular', 'pt' => 'pt_oyuncular',
+];
+$tbl_takim = [
+    'tr' => 'takimlar',    'cl' => 'cl_takimlar', 'pl' => 'pl_takimlar',
+    'es' => 'es_takimlar', 'de' => 'de_takimlar', 'fr' => 'fr_takimlar',
+    'it' => 'it_takimlar', 'pt' => 'pt_takimlar',
+];
+
+// İzin verilen lig kodları (whitelist)
+$gecerli_kaynaklar = array_keys($tbl_oyuncu);
 
 // --- KÜRESEL SATIN ALMA İŞLEMİ ---
 if (isset($_POST['satin_al'])) {
     $oyuncu_id = (int)$_POST['oyuncu_id'];
-    $kaynak_db = $_POST['kaynak_db']; // tr, cl veya pl
-    $hedef_takim_verisi = explode('_', $_POST['alici_takim']); // Örn: tr_5
-    
-    if(count($hedef_takim_verisi) == 2) {
+    $kaynak_db = $_POST['kaynak_db'] ?? '';
+    $hedef_takim_verisi = explode('_', $_POST['alici_takim'] ?? ''); // Örn: tr_5
+
+    // Whitelist: sadece bilinen lig kodlarına izin ver
+    if (!in_array($kaynak_db, $gecerli_kaynaklar, true)) {
+        $mesaj = "Geçersiz kaynak lig kodu."; $mesaj_tipi = "danger";
+    } elseif(count($hedef_takim_verisi) == 2) {
         $hedef_db = $hedef_takim_verisi[0];
         $hedef_takim_id = (int)$hedef_takim_verisi[1];
-        
-        $src_o_tbl = $tbl_oyuncu[$kaynak_db]; $src_t_tbl = $tbl_takim[$kaynak_db];
-        $tgt_o_tbl = $tbl_oyuncu[$hedef_db];  $tgt_t_tbl = $tbl_takim[$hedef_db];
-        
-        try {
-            $hedef_oyuncu = $pdo->query("SELECT * FROM $src_o_tbl WHERE id = $oyuncu_id")->fetch(PDO::FETCH_ASSOC);
-            $alici_takim = $pdo->query("SELECT * FROM $tgt_t_tbl WHERE id = $hedef_takim_id")->fetch(PDO::FETCH_ASSOC);
-            
-            if ($hedef_oyuncu && $alici_takim) {
-                $fiyat = $hedef_oyuncu['fiyat'];
-                $eski_takim_id = $hedef_oyuncu['takim_id'];
-                
-                if ($eski_takim_id == $hedef_takim_id && $kaynak_db == $hedef_db) {
-                    $mesaj = "Bu oyuncu zaten takımınızda!"; $mesaj_tipi = "warning";
-                } elseif ($alici_takim['butce'] >= $fiyat) {
-                    
-                    // Bütçe Güncelleme
-                    $pdo->exec("UPDATE $tgt_t_tbl SET butce = butce - $fiyat WHERE id = $hedef_takim_id");
-                    $pdo->exec("UPDATE $src_t_tbl SET butce = butce + $fiyat WHERE id = $eski_takim_id");
-                    
-                    // Oyuncuyu Yeni Lige Kopyala (Güvenli Prepare Statement ile)
-                    $stmt = $pdo->prepare("INSERT INTO $tgt_o_tbl (takim_id, isim, mevki, ovr, yas, fiyat, lig, ilk_11, yedek, form, fitness, moral, ceza_hafta, sakatlik_hafta, saha_pozisyon) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, 6, 100, 80, 0, 0, '50,50')");
-                    $stmt->execute([$hedef_takim_id, $hedef_oyuncu['isim'], $hedef_oyuncu['mevki'], $hedef_oyuncu['ovr'], $hedef_oyuncu['yas'], $fiyat, $alici_takim['lig']]);
-                    
-                    // Oyuncuyu Eski Liginden Sil
-                    $pdo->exec("DELETE FROM $src_o_tbl WHERE id = $oyuncu_id");
-                    
-                    $mesaj = "BOMBA TRANSFER! " . htmlspecialchars($hedef_oyuncu['isim']) . " resmen " . htmlspecialchars($alici_takim['takim_adi']) . " kadrosuna katıldı!";
-                    $mesaj_tipi = "success";
-                    
-                    // Güncel bütçeyi yansıtmak için diziyi de güncelle
-                    foreach($benim_takimlarim as &$bt) {
-                        if($bt['id'] == $hedef_takim_id && $bt['kaynak'] == $hedef_db) { $bt['butce'] -= $fiyat; }
+
+        // Hedef lig kodu da whitelist'te olmalı
+        if (!in_array($hedef_db, $gecerli_kaynaklar, true)) {
+            $mesaj = "Geçersiz hedef lig kodu."; $mesaj_tipi = "danger";
+        } else {
+            $src_o_tbl = $tbl_oyuncu[$kaynak_db]; $src_t_tbl = $tbl_takim[$kaynak_db];
+            $tgt_o_tbl = $tbl_oyuncu[$hedef_db];  $tgt_t_tbl = $tbl_takim[$hedef_db];
+
+            try {
+                $pdo->beginTransaction();
+
+                $stmt_oyuncu = $pdo->prepare("SELECT * FROM $src_o_tbl WHERE id = ?");
+                $stmt_oyuncu->execute([$oyuncu_id]);
+                $hedef_oyuncu = $stmt_oyuncu->fetch(PDO::FETCH_ASSOC);
+
+                $stmt_takim = $pdo->prepare("SELECT * FROM $tgt_t_tbl WHERE id = ?");
+                $stmt_takim->execute([$hedef_takim_id]);
+                $alici_takim = $stmt_takim->fetch(PDO::FETCH_ASSOC);
+
+                if ($hedef_oyuncu && $alici_takim) {
+                    $fiyat = (int)$hedef_oyuncu['fiyat'];
+                    $eski_takim_id = (int)$hedef_oyuncu['takim_id'];
+
+                    if ($eski_takim_id == $hedef_takim_id && $kaynak_db == $hedef_db) {
+                        $pdo->rollBack();
+                        $mesaj = "Bu oyuncu zaten takımınızda!"; $mesaj_tipi = "warning";
+                    } elseif ($alici_takim['butce'] >= $fiyat) {
+
+                        // Bütçe Güncelleme
+                        $pdo->prepare("UPDATE $tgt_t_tbl SET butce = butce - ? WHERE id = ?")->execute([$fiyat, $hedef_takim_id]);
+                        $pdo->prepare("UPDATE $src_t_tbl SET butce = butce + ? WHERE id = ?")->execute([$fiyat, $eski_takim_id]);
+
+                        // Oyuncuyu Yeni Lige Kopyala (Güvenli Prepare Statement ile)
+                        $stmt = $pdo->prepare("INSERT INTO $tgt_o_tbl (takim_id, isim, mevki, ovr, yas, fiyat, lig, ilk_11, yedek, form, fitness, moral, ceza_hafta, sakatlik_hafta, saha_pozisyon) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, 6, 100, 80, 0, 0, '50,50')");
+                        $stmt->execute([$hedef_takim_id, $hedef_oyuncu['isim'], $hedef_oyuncu['mevki'], $hedef_oyuncu['ovr'], $hedef_oyuncu['yas'], $fiyat, $alici_takim['lig']]);
+
+                        // Oyuncuyu Eski Liginden Sil
+                        $pdo->prepare("DELETE FROM $src_o_tbl WHERE id = ?")->execute([$oyuncu_id]);
+
+                        $pdo->commit();
+
+                        $mesaj = "BOMBA TRANSFER! " . htmlspecialchars($hedef_oyuncu['isim']) . " resmen " . htmlspecialchars($alici_takim['takim_adi']) . " kadrosuna katıldı!";
+                        $mesaj_tipi = "success";
+
+                        // Güncel bütçeyi yansıtmak için diziyi de güncelle
+                        foreach($benim_takimlarim as &$bt) {
+                            if($bt['id'] == $hedef_takim_id && $bt['kaynak'] == $hedef_db) { $bt['butce'] -= $fiyat; }
+                        }
+                    } else {
+                        $pdo->rollBack();
+                        $mesaj = "Finansal Uyarı! " . htmlspecialchars($alici_takim['takim_adi']) . " kasasında yeterli bütçe yok.";
+                        $mesaj_tipi = "danger";
                     }
                 } else {
-                    $mesaj = "Finansal Uyarı! " . htmlspecialchars($alici_takim['takim_adi']) . " kasasında yeterli bütçe yok.";
-                    $mesaj_tipi = "danger";
+                    $pdo->rollBack();
                 }
+            } catch(Throwable $e) {
+                if ($pdo->inTransaction()) { $pdo->rollBack(); }
+                $mesaj = "Transfer sırasında bir veritabanı hatası oluştu."; $mesaj_tipi = "danger";
             }
-        } catch(Throwable $e) {
-            $mesaj = "Transfer sırasında bir veritabanı hatası oluştu."; $mesaj_tipi = "danger";
         }
     }
 }
@@ -118,6 +196,41 @@ try {
     $pl_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'pl' AS kaynak, t.takim_adi, t.logo 
                                  FROM pl_oyuncular o JOIN pl_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $pl_oyuncular);
+} catch(Throwable $e) {}
+
+// La Liga Oyuncuları
+try {
+    $es_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'es' AS kaynak, t.takim_adi, t.logo 
+                                 FROM es_oyuncular o JOIN es_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
+    $tum_oyuncular = array_merge($tum_oyuncular, $es_oyuncular);
+} catch(Throwable $e) {}
+
+// Bundesliga Oyuncuları
+try {
+    $de_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'de' AS kaynak, t.takim_adi, t.logo 
+                                 FROM de_oyuncular o JOIN de_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
+    $tum_oyuncular = array_merge($tum_oyuncular, $de_oyuncular);
+} catch(Throwable $e) {}
+
+// Ligue 1 Oyuncuları
+try {
+    $fr_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'fr' AS kaynak, t.takim_adi, t.logo 
+                                 FROM fr_oyuncular o JOIN fr_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
+    $tum_oyuncular = array_merge($tum_oyuncular, $fr_oyuncular);
+} catch(Throwable $e) {}
+
+// Serie A Oyuncuları
+try {
+    $it_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'it' AS kaynak, t.takim_adi, t.logo 
+                                 FROM it_oyuncular o JOIN it_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
+    $tum_oyuncular = array_merge($tum_oyuncular, $it_oyuncular);
+} catch(Throwable $e) {}
+
+// Liga NOS Oyuncuları
+try {
+    $pt_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'pt' AS kaynak, t.takim_adi, t.logo 
+                                 FROM pt_oyuncular o JOIN pt_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
+    $tum_oyuncular = array_merge($tum_oyuncular, $pt_oyuncular);
 } catch(Throwable $e) {}
 
 // --- PHP TARAFINDA ARAMA VE FİLTRELEME ---
@@ -218,6 +331,11 @@ function paraFormatla($sayi) {
         .l-tr { background: #e11d48; color: #fff; }
         .l-cl { background: #00e5ff; color: #000; }
         .l-pl { background: #e2f89c; color: #000; }
+        .l-es { background: #f59e0b; color: #000; }
+        .l-de { background: #d97706; color: #fff; }
+        .l-fr { background: #3b82f6; color: #fff; }
+        .l-it { background: #10b981; color: #fff; }
+        .l-pt { background: #8b5cf6; color: #fff; }
     </style>
 </head>
 <body>
