@@ -70,7 +70,7 @@ function uefa_puani_ekle($pdo, $takim_id, $puan) {
 }
 
 $cl_takim_sayisi = $pdo->query("SELECT COUNT(*) FROM cl_takimlar")->fetchColumn();
-if ($cl_takim_sayisi < 37) {
+if ($cl_takim_sayisi == 0) {
     $devler = [
         ['Real Madrid', 'https://cdn-icons-png.flaticon.com/512/5041/5041042.png', 95, 92],
         ['Manchester City', 'https://cdn-icons-png.flaticon.com/512/825/825501.png', 96, 90],

@@ -6,84 +6,97 @@ include '../db.php';
 require_once '../MatchEngine.php';
 $engine = new MatchEngine($pdo, 'cl_');
 $ayar = $pdo->query("SELECT * FROM cl_ayar LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-$hafta = $ayar['hafta'];
-$kullanici_takim_id = $ayar['kullanici_takim_id'];
+$hafta = (int)$ayar['hafta'];
+$sezon_yili = (int)($ayar['sezon_yil'] ?? 2025);
+$kullanici_takim_id = (int)($ayar['kullanici_takim_id'] ?? 0);
 
 if ($hafta <= 8) { header("Location: cl.php"); exit; }
 
-function mac_var_mi($pdo, $h) { return $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta = $h")->fetchColumn() > 0; }
+function mac_var_mi($pdo, $h, $sezon_yil) {
+    $h = (int)$h; $sezon_yil = (int)$sezon_yil;
+    return $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta = $h AND sezon_yil = $sezon_yil")->fetchColumn() > 0;
+}
 
-function get_kazananlar($pdo, $h1, $h2) {
+function get_kazananlar($pdo, $h1, $h2, $sezon_yil) {
     $kazananlar = [];
-    $maclar1 = $pdo->query("SELECT * FROM cl_maclar WHERE hafta=$h1")->fetchAll(PDO::FETCH_ASSOC);
+    $h1 = (int)$h1; $h2 = (int)$h2; $sezon_yil = (int)$sezon_yil;
+    $maclar1 = $pdo->query("SELECT * FROM cl_maclar WHERE hafta=$h1 AND sezon_yil=$sezon_yil")->fetchAll(PDO::FETCH_ASSOC);
     foreach($maclar1 as $m1) {
-        $m2 = $pdo->query("SELECT * FROM cl_maclar WHERE hafta=$h2 AND ev={$m1['dep']} AND dep={$m1['ev']}")->fetch(PDO::FETCH_ASSOC);
+        $ev = (int)$m1['ev']; $dep = (int)$m1['dep'];
+        $m2 = $pdo->query("SELECT * FROM cl_maclar WHERE hafta=$h2 AND sezon_yil=$sezon_yil AND ev=$dep AND dep=$ev")->fetch(PDO::FETCH_ASSOC);
         if($m2 && $m1['ev_skor'] !== null && $m2['ev_skor'] !== null) {
             $t1_toplam = $m1['ev_skor'] + $m2['dep_skor'];
             $t2_toplam = $m1['dep_skor'] + $m2['ev_skor'];
-            if($t1_toplam > $t2_toplam) $kazananlar[] = $m1['ev'];
-            elseif($t2_toplam > $t1_toplam) $kazananlar[] = $m1['dep'];
-            else $kazananlar[] = (rand(0,1) == 0) ? $m1['ev'] : $m1['dep']; 
+            if($t1_toplam > $t2_toplam) $kazananlar[] = $ev;
+            elseif($t2_toplam > $t1_toplam) $kazananlar[] = $dep;
+            else $kazananlar[] = (rand(0,1) == 0) ? $ev : $dep; 
         }
     }
     return $kazananlar;
 }
 
 // --- OTOMATİK EŞLEŞME MOTORU (SWISS SİSTEMİ) ---
-if ($hafta == 9 && !mac_var_mi($pdo, 9)) {
-    // SADECE 9 İLE 24. SIRALAR ARASI PLAY-OFF OYNAR! (İlk 8 dinleniyor, 25-36 eleniyor)
-    $takimlar = $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC LIMIT 8, 16")->fetchAll(PDO::FETCH_COLUMN);
+// Hafta 9-10: PLAY-OFF – SADECE 9-24. SIRALAR ARASI (ilk 8 direkt Son 16, 25-36 elenir)
+if ($hafta == 9 && !mac_var_mi($pdo, 9, $sezon_yili)) {
+    $takimlar = array_map('intval', $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC LIMIT 8, 16")->fetchAll(PDO::FETCH_COLUMN));
     $n = count($takimlar);
-    // En az 8 takım ve çift sayıda olmalı (her eşleşme için 2 takım)
-    if($n >= 8 && $n % 2 == 0) {
+    if($n == 16) {
         $yari = $n / 2;
         for($i=0; $i<$yari; $i++) {
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$takimlar[$i]}, {$takimlar[$n-1-$i]}, 9)");
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$takimlar[$n-1-$i]}, {$takimlar[$i]}, 10)");
+            $ev = $takimlar[$i]; $dep = $takimlar[$n-1-$i];
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($ev, $dep, 9, $sezon_yili)");
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($dep, $ev, 10, $sezon_yili)");
         }
     }
 }
-if ($hafta == 11 && !mac_var_mi($pdo, 11)) {
-    // İLK 8 TAKIM SAHNEYE ÇIKAR! Play-Off kazananlarıyla eşleşirler.
-    $ilk8 = $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC LIMIT 8")->fetchAll(PDO::FETCH_COLUMN);
-    $playoff = get_kazananlar($pdo, 9, 10);
+if ($hafta == 11 && !mac_var_mi($pdo, 11, $sezon_yili)) {
+    // Hafta 11-12: SON 16 – İlk 8 takım sahneye çıkar, play-off kazananlarıyla eşleşir
+    $ilk8 = array_map('intval', $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC LIMIT 8")->fetchAll(PDO::FETCH_COLUMN));
+    $playoff = get_kazananlar($pdo, 9, 10, $sezon_yili);
     if(count($playoff) == 8 && count($ilk8) == 8) {
         for($i=0; $i<8; $i++) {
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$ilk8[$i]}, {$playoff[$i]}, 11)");
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$playoff[$i]}, {$ilk8[$i]}, 12)");
+            $ev = (int)$ilk8[$i]; $dep = (int)$playoff[$i];
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($ev, $dep, 11, $sezon_yili)");
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($dep, $ev, 12, $sezon_yili)");
         }
     }
 }
-if ($hafta == 13 && !mac_var_mi($pdo, 13)) {
-    $c = get_kazananlar($pdo, 11, 12); shuffle($c);
+// Hafta 13-14: ÇEYREK FİNAL
+if ($hafta == 13 && !mac_var_mi($pdo, 13, $sezon_yili)) {
+    $c = get_kazananlar($pdo, 11, 12, $sezon_yili); shuffle($c);
     if(count($c) == 8) {
         for($i=0; $i<4; $i++) {
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$c[$i*2]}, {$c[$i*2+1]}, 13)");
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$c[$i*2+1]}, {$c[$i*2]}, 14)");
+            $ev = (int)$c[$i*2]; $dep = (int)$c[$i*2+1];
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($ev, $dep, 13, $sezon_yili)");
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($dep, $ev, 14, $sezon_yili)");
         }
     }
 }
-if ($hafta == 15 && !mac_var_mi($pdo, 15)) {
-    $y = get_kazananlar($pdo, 13, 14); shuffle($y);
+// Hafta 15-16: YARI FİNAL
+if ($hafta == 15 && !mac_var_mi($pdo, 15, $sezon_yili)) {
+    $y = get_kazananlar($pdo, 13, 14, $sezon_yili); shuffle($y);
     if(count($y) == 4) {
         for($i=0; $i<2; $i++) {
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$y[$i*2]}, {$y[$i*2+1]}, 15)");
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$y[$i*2+1]}, {$y[$i*2]}, 16)");
+            $ev = (int)$y[$i*2]; $dep = (int)$y[$i*2+1];
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($ev, $dep, 15, $sezon_yili)");
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($dep, $ev, 16, $sezon_yili)");
         }
     }
 }
-if ($hafta == 17 && !mac_var_mi($pdo, 17)) {
-    $f = get_kazananlar($pdo, 15, 16);
+// Hafta 17: FİNAL (tek maç)
+if ($hafta == 17 && !mac_var_mi($pdo, 17, $sezon_yili)) {
+    $f = get_kazananlar($pdo, 15, 16, $sezon_yili);
     if(count($f) == 2) {
-        $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$f[0]}, {$f[1]}, 17)");
+        $ev = (int)$f[0]; $dep = (int)$f[1];
+        $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta, sezon_yil) VALUES ($ev, $dep, 17, $sezon_yili)");
     }
 }
 
 // SİMÜLASYON İŞLEMİ
 if(isset($_GET['simule'])) {
-    $maclar = $pdo->query("SELECT * FROM cl_maclar WHERE hafta = $hafta AND ev_skor IS NULL")->fetchAll(PDO::FETCH_ASSOC);
+    $maclar = $pdo->query("SELECT * FROM cl_maclar WHERE hafta = $hafta AND sezon_yil = $sezon_yili AND ev_skor IS NULL")->fetchAll(PDO::FETCH_ASSOC);
     foreach($maclar as $m) {
-        if($kullanici_takim_id && ($m['ev'] == $kullanici_takim_id || $m['dep'] == $kullanici_takim_id) && !isset($_GET['full'])) continue; // full eklendiyse kendi maçını da simüle eder
+        if($kullanici_takim_id && ($m['ev'] == $kullanici_takim_id || $m['dep'] == $kullanici_takim_id) && !isset($_GET['full'])) continue;
         
         $skorlar = $engine->gercekci_skor_hesapla($m['ev'], $m['dep']);
         $ev_d = $engine->mac_olay_uret($m['ev'], $skorlar['ev']);
@@ -92,7 +105,7 @@ if(isset($_GET['simule'])) {
         $stmt->execute([$skorlar['ev'], $skorlar['dep'], $ev_d['olaylar'], $dep_d['olaylar'], $ev_d['kartlar'], $dep_d['kartlar'], $m['id']]);
     }
     
-    $kalan = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta = $hafta AND ev_skor IS NULL")->fetchColumn();
+    $kalan = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta = $hafta AND sezon_yil = $sezon_yili AND ev_skor IS NULL")->fetchColumn();
     if($kalan == 0) { $pdo->exec("UPDATE cl_ayar SET hafta = hafta + 1"); }
     
     header("Location: cl_nokaut.php?asama=".($_GET['asama'] ?? 'po')); exit;
@@ -114,13 +127,26 @@ if(!isset($_GET['asama'])) {
     elseif($hafta <= 16) $asama = 'yf';
     else $asama = 'f';
 } else {
-    $asama = $_GET['asama'];
+    $asama = isset($_GET['asama']) && array_key_exists($_GET['asama'], $asama_map) ? $_GET['asama'] : 'po';
 }
 
-$hedef_h = implode(',', $asama_map[$asama]['h']);
-$maclar_ui = $pdo->query("SELECT m.*, t1.takim_adi as ev_ad, t1.logo as ev_logo, t2.takim_adi as dep_ad, t2.logo as dep_logo FROM cl_maclar m JOIN cl_takimlar t1 ON m.ev = t1.id JOIN cl_takimlar t2 ON m.dep = t2.id WHERE m.hafta IN ($hedef_h) ORDER BY m.hafta ASC")->fetchAll(PDO::FETCH_ASSOC);
+$hedef_h = implode(',', array_map('intval', $asama_map[$asama]['h']));
+$maclar_ui = $pdo->query("SELECT m.*, t1.takim_adi as ev_ad, t1.logo as ev_logo, t2.takim_adi as dep_ad, t2.logo as dep_logo FROM cl_maclar m JOIN cl_takimlar t1 ON m.ev = t1.id JOIN cl_takimlar t2 ON m.dep = t2.id WHERE m.hafta IN ($hedef_h) AND m.sezon_yil = $sezon_yili ORDER BY m.hafta ASC")->fetchAll(PDO::FETCH_ASSOC);
 
-$benim_macim_var_mi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta=$hafta AND ev_skor IS NULL AND (ev=$kullanici_takim_id OR dep=$kullanici_takim_id)")->fetchColumn();
+$benim_macim_var_mi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta=$hafta AND sezon_yil=$sezon_yili AND ev_skor IS NULL AND (ev=$kullanici_takim_id OR dep=$kullanici_takim_id)")->fetchColumn();
+
+// Hafta numarasından okunabilir tur adı
+$hafta_tur_adi = [
+    9  => 'PO 1. MAÇI',
+    10 => 'PO RÖVANŞI',
+    11 => 'S16 1. MAÇI',
+    12 => 'S16 RÖVANŞI',
+    13 => 'ÇF 1. MAÇI',
+    14 => 'ÇF RÖVANŞI',
+    15 => 'YF 1. MAÇI',
+    16 => 'YF RÖVANŞI',
+    17 => 'FİNAL',
+];
 ?>
 
 <!DOCTYPE html>
@@ -299,7 +325,7 @@ $benim_macim_var_mi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta=$h
                                 <span class="match-status" style="color:#4ade80; font-size:0.7rem;">MAÇ BİTTİ</span>
                             <?php else: ?>
                                 <span class="match-score" style="font-size:1.4rem; color:#475569;">vs</span>
-                                <span class="match-status">HAFTA <?= $mac['hafta'] ?></span>
+                                <span class="match-status"><?= $hafta_tur_adi[$mac['hafta']] ?? ('H'.$mac['hafta']) ?></span>
                             <?php endif; ?>
                         </div>
                         <div class="team-block away">
