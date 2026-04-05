@@ -70,7 +70,7 @@ function uefa_puani_ekle($pdo, $takim_id, $puan) {
 }
 
 $cl_takim_sayisi = $pdo->query("SELECT COUNT(*) FROM cl_takimlar")->fetchColumn();
-if ($cl_takim_sayisi < 18) {
+if ($cl_takim_sayisi < 26) {
     $devler = [
         ['Real Madrid', 'https://cdn-icons-png.flaticon.com/512/5041/5041042.png', 95, 92],
         ['Manchester City', 'https://cdn-icons-png.flaticon.com/512/825/825501.png', 96, 90],
@@ -87,7 +87,15 @@ if ($cl_takim_sayisi < 18) {
         ['Leverkusen', 'https://cdn-icons-png.flaticon.com/512/5041/5041055.png', 89, 86],
         ['Napoli', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 86, 88],
         ['Chelsea', 'https://cdn-icons-png.flaticon.com/512/825/825532.png', 88, 87],
-        ['Man United', 'https://cdn-icons-png.flaticon.com/512/825/825503.png', 87, 85]
+        ['Man United', 'https://cdn-icons-png.flaticon.com/512/825/825503.png', 87, 85],
+        ['Porto', 'https://cdn-icons-png.flaticon.com/512/5041/5041042.png', 84, 85],
+        ['Benfica', 'https://cdn-icons-png.flaticon.com/512/825/825553.png', 83, 82],
+        ['Ajax', 'https://cdn-icons-png.flaticon.com/512/825/825503.png', 82, 80],
+        ['PSV', 'https://cdn-icons-png.flaticon.com/512/825/825501.png', 81, 79],
+        ['Sevilla', 'https://cdn-icons-png.flaticon.com/512/5041/5041045.png', 80, 81],
+        ['Sporting CP', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 79, 80],
+        ['Celtic', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 78, 77],
+        ['Club Brugge', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 77, 78],
     ];
     foreach($devler as $d) {
         $ad = $d[0]; $logo = $d[1]; $huc = $d[2]; $sav = $d[3];
@@ -145,7 +153,7 @@ if($mac_sayisi == 0) {
         if(count($takimlar) % 2 != 0) $takimlar[] = 0;
         $t_sayisi = count($takimlar); $yari = $t_sayisi - 1; $m_sayisi = $t_sayisi / 2;
 
-        for ($h = 1; $h <= $yari; $h++) {
+        for ($h = 1; $h <= min(8, $yari); $h++) {
             for ($i = 0; $i < $m_sayisi; $i++) {
                 $ev = $takimlar[$i]; $dep = $takimlar[$t_sayisi - 1 - $i];
                 if ($ev != 0 && $dep != 0) {
@@ -273,6 +281,45 @@ if(isset($_GET['action'])) {
             $pdo->exec("UPDATE cl_ayar SET hafta = LEAST($max_hafta, hafta + 1)"); 
         }
         header("Location: cl.php"); exit;
+    }
+
+    // TÜM 8 HAFTAYI SİMÜLE ET
+    if($action == 'tum_8_hafta') {
+        $pdo->exec("UPDATE cl_oyuncular SET ilk_11 = 0, yedek = 1 WHERE ilk_11 = 1 AND (ceza_hafta > 0 OR sakatlik_hafta > 0)");
+        $baslangic_hafta = (int)$pdo->query("SELECT hafta FROM cl_ayar LIMIT 1")->fetchColumn();
+        
+        for ($h = $baslangic_hafta; $h <= 8; $h++) {
+            $maclar_h = $pdo->query("SELECT m.id, m.ev, m.dep, t1.takim_adi as ev_ad, t2.takim_adi as dep_ad, t1.hucum as ev_hucum, t1.savunma as ev_savunma, t2.hucum as dep_hucum, t2.savunma as dep_savunma 
+                                     FROM cl_maclar m JOIN cl_takimlar t1 ON m.ev=t1.id JOIN cl_takimlar t2 ON m.dep=t2.id 
+                                     WHERE m.hafta = $h AND m.ev_skor IS NULL")->fetchAll(PDO::FETCH_ASSOC);
+            foreach($maclar_h as $m) {
+                $skorlar = $engine->gercekci_skor_hesapla($m['ev'], $m['dep'], $m);
+                $ev_skor = $skorlar['ev']; $dep_skor = $skorlar['dep'];
+                $ev_detay = $engine->mac_olay_uret($m['ev'], $ev_skor);
+                $dep_detay = $engine->mac_olay_uret($m['dep'], $dep_skor);
+                $stmt = $pdo->prepare("UPDATE cl_maclar SET ev_skor=?, dep_skor=?, ev_olaylar=?, dep_olaylar=?, ev_kartlar=?, dep_kartlar=? WHERE id=?");
+                $stmt->execute([$ev_skor, $dep_skor, $ev_detay['olaylar'], $dep_detay['olaylar'], $ev_detay['kartlar'], $dep_detay['kartlar'], $m['id']]);
+                $pdo->exec("UPDATE cl_takimlar SET atilan_gol = atilan_gol + $ev_skor, yenilen_gol = yenilen_gol + $dep_skor WHERE id = {$m['ev']}");
+                $pdo->exec("UPDATE cl_takimlar SET atilan_gol = atilan_gol + $dep_skor, yenilen_gol = yenilen_gol + $ev_skor WHERE id = {$m['dep']}");
+                if($ev_skor > $dep_skor) { 
+                    $pdo->exec("UPDATE cl_takimlar SET puan=puan+3, galibiyet=galibiyet+1 WHERE id={$m['ev']}"); 
+                    $pdo->exec("UPDATE cl_takimlar SET malubiyet=malubiyet+1 WHERE id={$m['dep']}"); 
+                    uefa_puani_ekle($pdo, $m['ev'], 400);
+                } elseif($ev_skor == $dep_skor) { 
+                    $pdo->exec("UPDATE cl_takimlar SET puan=puan+1, beraberlik=beraberlik+1 WHERE id IN ({$m['ev']}, {$m['dep']})"); 
+                    uefa_puani_ekle($pdo, $m['ev'], 200); uefa_puani_ekle($pdo, $m['dep'], 200);
+                } else { 
+                    $pdo->exec("UPDATE cl_takimlar SET puan=puan+3, galibiyet=galibiyet+1 WHERE id={$m['dep']}"); 
+                    $pdo->exec("UPDATE cl_takimlar SET malubiyet=malubiyet+1 WHERE id={$m['ev']}"); 
+                    uefa_puani_ekle($pdo, $m['dep'], 400);
+                }
+            }
+            $pdo->exec("UPDATE cl_oyuncular SET ceza_hafta = GREATEST(0, ceza_hafta - 1) WHERE ceza_hafta > 0");
+            $pdo->exec("UPDATE cl_oyuncular SET fitness = GREATEST(30, fitness - ROUND(RAND() * 15 + 5)) WHERE ilk_11 = 1");
+            $pdo->exec("UPDATE cl_oyuncular SET fitness = LEAST(100, fitness + ROUND(RAND() * 20 + 10)) WHERE ilk_11 = 0");
+        }
+        $pdo->exec("UPDATE cl_ayar SET hafta = 9");
+        header("Location: cl_nokaut.php"); exit;
     }
 }
 
@@ -425,16 +472,16 @@ if($kullanici_takim) {
     <nav class="pro-navbar">
         <a href="cl.php" class="nav-brand"><i class="fa-solid fa-futbol"></i> <span class="font-oswald">CHAMPIONS LEAGUE</span></a>
         
-        <div class="nav-menu d-none d-lg-flex gap-3">
-            <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez Hub</a>
-            <a href="cl_kadro.php" class="nav-link-item"><i class="fa-solid fa-users"></i> Taktik Odası</a>
-            <a href="cl_uefa.php" class="nav-link-item text-warning fw-bold"><i class="fa-solid fa-flag"></i> Ülke Puanı</a>
-            
-            <a href="?action=sifirla" class="nav-link-item text-danger fw-bold" onclick="return confirm('TÜM SEZON SIFIRLANACAK! Maçlar silinecek ve takımlar 1. Haftaya dönecek. Emin misiniz?');">
-                <i class="fa-solid fa-power-off"></i> Sezonu Sıfırla
+        <div class="nav-menu d-none d-lg-flex gap-2">
+            <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez</a>
+            <a href="cl_kadro.php" class="nav-link-item"><i class="fa-solid fa-users"></i> Kadro</a>
+            <a href="cl_puan.php" class="nav-link-item"><i class="fa-solid fa-chart-bar"></i> İstatistik</a>
+            <a href="cl_nokaut.php" class="nav-link-item" style="color:#fbbf24; font-weight:700;"><i class="fa-solid fa-bolt"></i> Eleme Turları</a>
+            <a href="cl_uefa.php" class="nav-link-item text-warning fw-bold"><i class="fa-solid fa-flag"></i> UEFA Puanı</a>
+            <a href="?action=sifirla" class="nav-link-item text-danger" onclick="return confirm('TÜM SEZON SIFIRLANACAK! Maçlar silinecek ve takımlar 1. Haftaya dönecek. Emin misiniz?');">
+                <i class="fa-solid fa-power-off"></i> Sıfırla
             </a>
-            
-            <a href="../super_lig/superlig.php" class="nav-link-item text-danger"><i class="fa-solid fa-arrow-left"></i> Yerel Lige Dön</a>
+            <a href="../super_lig/superlig.php" class="nav-link-item" style="color:#94a3b8;"><i class="fa-solid fa-arrow-left"></i> Yerel Lig</a>
         </div>
 
         <div class="d-flex gap-3">
@@ -517,9 +564,10 @@ if($kullanici_takim) {
                             </table>
                         </div>
                         
-                        <div class="p-3 border-top" style="border-color:var(--border-color); font-size:0.95rem; background:rgba(0,0,0,0.5);">
-                            <span style="color:var(--cl-accent); font-weight:800;"><i class="fa-solid fa-square"></i> İlk 8: Son 16 Turu</span>
-                            <span class="ms-4 text-warning font-weight:800;"><i class="fa-solid fa-square"></i> 9-24: Play-Off Turu</span>
+                        <div class="p-3 border-top d-flex flex-wrap gap-3 align-items-center" style="border-color:var(--border-color); font-size:0.88rem; background:rgba(0,0,0,0.5);">
+                            <span style="color:var(--cl-accent); font-weight:700;"><i class="fa-solid fa-square me-1"></i>1-8: Son 16 (Direkt)</span>
+                            <span class="text-warning" style="font-weight:700;"><i class="fa-solid fa-square me-1"></i>9-24: Play-Off</span>
+                            <span class="text-muted ms-auto fst-italic" style="font-size:0.8rem;">Swiss System · 8 Maç Günü</span>
                         </div>
                         
                     </div>
@@ -544,9 +592,17 @@ if($kullanici_takim) {
                         
                         <div class="fixture-wrapper">
                             
+                            <?php if($hafta <= 8): ?>
+                                <a href="?action=tum_8_hafta" class="btn fw-bold w-100 mb-2 py-3 font-oswald" 
+                                   style="background: linear-gradient(90deg,#1d4ed8,#00e5ff); color:#000; box-shadow:0 0 20px rgba(0,229,255,0.5); font-size:1.15rem; border-radius:8px; border:none;"
+                                   onclick="return confirm('Tüm 8 haftayı simüle etmek istediğinizden emin misiniz?')">
+                                    <i class="fa-solid fa-bolt me-2"></i> TÜM 8 HAFTAYI SİMÜLE ET
+                                </a>
+                            <?php endif; ?>
+                            
                             <?php if($goster_hafta == $hafta && count($yayinlanacak_maclar) > 0 && $hafta <= 8): ?>
-                                <a href="?action=hafta_full" class="btn btn-info fw-bold w-100 mb-2 py-3 text-dark font-oswald" style="box-shadow: 0 0 15px rgba(0,229,255,0.4); font-size: 1.2rem; border-radius: 8px;">
-                                    <i class="fa-solid fa-forward-fast me-2"></i> TÜM HAFTAYI SİMÜLE ET
+                                <a href="?action=hafta_full" class="btn btn-outline-info fw-bold w-100 mb-2 py-2 font-oswald" style="font-size: 1rem; border-radius: 8px;">
+                                    <i class="fa-solid fa-forward-fast me-2"></i> SADECE BU HAFTAYI SİMÜLE ET
                                 </a>
                             <?php endif; ?>
 
