@@ -151,6 +151,38 @@ $hafta_tur_adi = [
     16 => 'YF RÖVANŞI',
     17 => 'FİNAL',
 ];
+
+// Final sonrası şampiyon ve finalist (Hafta 17 maçından)
+$final_sampiyon = null;
+$final_finalist = null;
+$final_skor_goster = null;
+if ($hafta > 17) {
+    $final_mac = $pdo->query(
+        "SELECT m.*, t1.takim_adi as ev_ad, t1.logo as ev_logo, t1.id as ev_id,
+                t2.takim_adi as dep_ad, t2.logo as dep_logo, t2.id as dep_id
+         FROM cl_maclar m
+         JOIN cl_takimlar t1 ON m.ev = t1.id
+         JOIN cl_takimlar t2 ON m.dep = t2.id
+         WHERE m.hafta = 17 AND m.ev_skor IS NOT NULL AND m.sezon_yil = $sezon_yili
+         LIMIT 1"
+    )->fetch(PDO::FETCH_ASSOC);
+    if ($final_mac) {
+        if ((int)$final_mac['ev_skor'] > (int)$final_mac['dep_skor']) {
+            $s_id = (int)$final_mac['ev_id']; $f_id = (int)$final_mac['dep_id'];
+        } elseif ((int)$final_mac['dep_skor'] > (int)$final_mac['ev_skor']) {
+            $s_id = (int)$final_mac['dep_id']; $f_id = (int)$final_mac['ev_id'];
+        } else {
+            // Berabere biten final: ev sahibi kazanır (simülasyon limiti)
+            $s_id = (int)$final_mac['ev_id']; $f_id = (int)$final_mac['dep_id'];
+        }
+        $stmt = $pdo->prepare("SELECT * FROM cl_takimlar WHERE id = ?");
+        $stmt->execute([$s_id]);
+        $final_sampiyon = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->execute([$f_id]);
+        $final_finalist = $stmt->fetch(PDO::FETCH_ASSOC);
+        $final_skor_goster = $final_mac['ev_skor'] . ' - ' . $final_mac['dep_skor'];
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -209,10 +241,14 @@ $hafta_tur_adi = [
         <a href="cl.php" style="color:#00e5ff; font-family:'Oswald',sans-serif; font-size:1.3rem; text-decoration:none; display:flex; align-items:center; gap:8px;">
             <i class="fa-solid fa-futbol"></i> CHAMPIONS LEAGUE
         </a>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a href="cl.php" class="tab-btn" style="padding:8px 16px; font-size:0.9rem;"><i class="fa-solid fa-list-ol me-1"></i>Lig Tablosu</a>
-            <a href="cl_kadro.php" class="tab-btn" style="padding:8px 16px; font-size:0.9rem;"><i class="fa-solid fa-users me-1"></i>Kadro</a>
-            <a href="cl_puan.php" class="tab-btn" style="padding:8px 16px; font-size:0.9rem;"><i class="fa-solid fa-chart-bar me-1"></i>İstatistik</a>
+        <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+            <a href="cl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-house me-1"></i>Ana Sayfa</a>
+            <a href="cl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-list-ol me-1"></i>Lig Aşaması</a>
+            <a href="cl_nokaut.php?asama=po" class="tab-btn <?= $asama=='po' ? 'active' : '' ?>" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-shield-halved me-1"></i>Playoff</a>
+            <a href="cl_nokaut.php" class="tab-btn active" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-bolt me-1"></i>Eleme Turları</a>
+            <a href="cl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-table me-1"></i>Puan Tablosu</a>
+            <a href="cl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-calendar-days me-1"></i>Fikstür / Maçlar</a>
+            <a href="cl_puan.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-chart-bar me-1"></i>İstatistikler</a>
         </div>
     </nav>
 
@@ -268,6 +304,33 @@ $hafta_tur_adi = [
             <?php endif; ?>
         </div>
     </div>
+
+    <?php if($final_sampiyon): ?>
+    <!-- ŞAMPİYON BLOKU - FİNAL SONRASI -->
+    <div style="max-width:860px; margin: 0 auto 30px; padding: 0 1rem;">
+        <div style="background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(0,229,255,0.08)); border: 2px solid #d4af37; border-radius: 18px; padding: 36px 30px; text-align:center; box-shadow: 0 0 40px rgba(212,175,55,0.25);">
+            <div style="font-family:'Oswald',sans-serif; font-size:0.9rem; color:#94a3b8; letter-spacing:3px; margin-bottom:12px;">UEFA ŞAMPİYONLAR LİGİ FİNALİ</div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:30px; flex-wrap:wrap;">
+                <div style="text-align:center;">
+                    <img src="<?= htmlspecialchars($final_sampiyon['logo']) ?>" style="width:90px; height:90px; object-fit:contain; filter:drop-shadow(0 0 14px #d4af37);">
+                    <div style="font-family:'Oswald',sans-serif; font-size:1.5rem; color:#d4af37; font-weight:900; margin-top:8px;">🏆 Şampiyon</div>
+                    <div style="font-size:1.2rem; color:#fff; font-weight:700;"><?= htmlspecialchars($final_sampiyon['takim_adi']) ?></div>
+                </div>
+                <?php if($final_skor_goster): ?>
+                <div style="text-align:center; background:rgba(0,0,0,0.5); border:1px solid rgba(0,229,255,0.3); border-radius:12px; padding:14px 24px;">
+                    <div style="color:#94a3b8; font-size:0.75rem; letter-spacing:2px; margin-bottom:4px;">FİNAL SKORU</div>
+                    <div style="font-family:'Oswald',sans-serif; font-size:2.4rem; color:#fff; font-weight:900; line-height:1;"><?= htmlspecialchars($final_skor_goster) ?></div>
+                </div>
+                <?php endif; ?>
+                <div style="text-align:center;">
+                    <img src="<?= htmlspecialchars($final_finalist['logo']) ?>" style="width:70px; height:70px; object-fit:contain; opacity:0.85; filter:drop-shadow(0 0 8px rgba(148,163,184,0.5));">
+                    <div style="font-family:'Oswald',sans-serif; font-size:1.2rem; color:#cbd5e1; font-weight:700; margin-top:8px;">🥈 Finalist</div>
+                    <div style="font-size:1rem; color:#94a3b8;"><?= htmlspecialchars($final_finalist['takim_adi']) ?></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="container pb-5" style="max-width: 1050px;">
         

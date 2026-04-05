@@ -197,18 +197,14 @@ try {
             <span class="font-oswald text-white">CHAMPIONS LEAGUE</span>
         </a>
         
-        <div class="nav-menu d-none d-lg-flex gap-3">
-            <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez Hub</a>
-            <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-tv"></i> Maç Merkezi</a>
-            <a href="cl_kadro.php" class="nav-link-item"><i class="fa-solid fa-users"></i> Taktik Odası</a>
-            <a href="cl_transfer.php" class="nav-link-item"><i class="fa-solid fa-comments-dollar"></i> Transfer</a>
-            <a href="cl_puan.php" class="nav-link-item text-white fw-bold" style="text-shadow: 0 0 10px var(--cl-accent);"><i class="fa-solid fa-chart-pie"></i> İstatistik</a>
-        </div>
-        
-        <div class="d-flex gap-3">
-            <a href="../super_lig/superlig.php" class="btn-action-outline text-danger border-danger hover-lift">
-                <i class="fa-solid fa-arrow-left"></i> Yerel Lige Dön
-            </a>
+        <div class="nav-menu d-none d-lg-flex gap-1">
+            <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-house me-1"></i>Ana Sayfa</a>
+            <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-list-ol me-1"></i>Lig Aşaması</a>
+            <a href="cl_nokaut.php?asama=po" class="nav-link-item"><i class="fa-solid fa-shield-halved me-1"></i>Playoff</a>
+            <a href="cl_nokaut.php" class="nav-link-item"><i class="fa-solid fa-bolt me-1"></i>Eleme Turları</a>
+            <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-table me-1"></i>Puan Tablosu</a>
+            <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-calendar-days me-1"></i>Fikstür / Maçlar</a>
+            <a href="cl_puan.php" class="nav-link-item text-white fw-bold" style="text-shadow: 0 0 10px var(--cl-accent); border-bottom:2px solid var(--cl-accent);"><i class="fa-solid fa-chart-bar me-1"></i>İstatistikler</a>
         </div>
     </nav>
 

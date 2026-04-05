@@ -489,12 +489,14 @@ if($kullanici_takim) {
     <nav class="pro-navbar">
         <a href="cl.php" class="nav-brand"><i class="fa-solid fa-futbol"></i> <span class="font-oswald">CHAMPIONS LEAGUE</span></a>
         
-        <div class="nav-menu d-none d-lg-flex gap-2">
-            <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez</a>
-            <a href="cl_kadro.php" class="nav-link-item"><i class="fa-solid fa-users"></i> Kadro</a>
-            <a href="cl_puan.php" class="nav-link-item"><i class="fa-solid fa-chart-bar"></i> İstatistik</a>
-            <a href="cl_nokaut.php" class="nav-link-item" style="color:#fbbf24; font-weight:700;"><i class="fa-solid fa-bolt"></i> Eleme Turları</a>
-            <a href="cl_uefa.php" class="nav-link-item text-warning fw-bold"><i class="fa-solid fa-flag"></i> UEFA Puanı</a>
+        <div class="nav-menu d-none d-lg-flex gap-1">
+            <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-house me-1"></i>Ana Sayfa</a>
+            <a href="cl.php" class="nav-link-item" style="color:var(--cl-accent); font-weight:700; border-bottom:2px solid var(--cl-accent);"><i class="fa-solid fa-list-ol me-1"></i>Lig Aşaması</a>
+            <a href="cl_nokaut.php?asama=po" class="nav-link-item"><i class="fa-solid fa-shield-halved me-1"></i>Playoff</a>
+            <a href="cl_nokaut.php" class="nav-link-item" style="color:#fbbf24;"><i class="fa-solid fa-bolt me-1"></i>Eleme Turları</a>
+            <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-table me-1"></i>Puan Tablosu</a>
+            <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-calendar-days me-1"></i>Fikstür / Maçlar</a>
+            <a href="cl_puan.php" class="nav-link-item"><i class="fa-solid fa-chart-bar me-1"></i>İstatistikler</a>
             <a href="?action=sifirla" class="nav-link-item text-danger" onclick="return confirm('TÜM SEZON SIFIRLANACAK! Maçlar silinecek ve takımlar 1. Haftaya dönecek. Emin misiniz?');">
                 <i class="fa-solid fa-power-off"></i> Sıfırla
             </a>

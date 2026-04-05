@@ -8,12 +8,45 @@ $ayar = $pdo->query("SELECT * FROM cl_ayar LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $kullanici_takim_id = $ayar['kullanici_takim_id'] ?? null;
 $guncel_sezon = $ayar['sezon_yil'] ?? 2025;
 
-// Şampiyonu ve sıralamayı belirle
-$puan_durumu = $pdo->query("SELECT * FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC")->fetchAll(PDO::FETCH_ASSOC);
-if(empty($puan_durumu)) { header("Location: cl.php"); exit; }
+// Şampiyonu ve finalistı SADECE final maçından (Hafta 17) belirle
+$sezon_yili = (int)($ayar['sezon_yil'] ?? 2025);
+$final_mac = $pdo->query(
+    "SELECT m.*, t1.takim_adi as ev_ad, t1.logo as ev_logo, t1.id as ev_id,
+            t2.takim_adi as dep_ad, t2.logo as dep_logo, t2.id as dep_id
+     FROM cl_maclar m
+     JOIN cl_takimlar t1 ON m.ev = t1.id
+     JOIN cl_takimlar t2 ON m.dep = t2.id
+     WHERE m.hafta = 17 AND m.ev_skor IS NOT NULL AND m.sezon_yil = $sezon_yili
+     LIMIT 1"
+)->fetch(PDO::FETCH_ASSOC);
 
-$sampiyon = $puan_durumu[0];
-$ikinci = $puan_durumu[1] ?? null;
+$sampiyon = null;
+$finalist = null;
+$final_skor = null;
+
+if ($final_mac) {
+    if ((int)$final_mac['ev_skor'] > (int)$final_mac['dep_skor']) {
+        $sampiyon_id = (int)$final_mac['ev_id'];
+        $finalist_id = (int)$final_mac['dep_id'];
+    } elseif ((int)$final_mac['dep_skor'] > (int)$final_mac['ev_skor']) {
+        $sampiyon_id = (int)$final_mac['dep_id'];
+        $finalist_id = (int)$final_mac['ev_id'];
+    } else {
+        // Berabere biten final: mevcut sistemde ev sahibi kazanır (simülasyon limiti)
+        $sampiyon_id = (int)$final_mac['ev_id'];
+        $finalist_id = (int)$final_mac['dep_id'];
+    }
+    $stmt = $pdo->prepare("SELECT * FROM cl_takimlar WHERE id = ?");
+    $stmt->execute([$sampiyon_id]);
+    $sampiyon = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt->execute([$finalist_id]);
+    $finalist = $stmt->fetch(PDO::FETCH_ASSOC);
+    $final_skor = $final_mac['ev_skor'] . ' - ' . $final_mac['dep_skor'];
+}
+
+// Tüm takım sıralaması (ödül hesabı için hâlâ gerekli)
+$puan_durumu = $pdo->query("SELECT * FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC")->fetchAll(PDO::FETCH_ASSOC);
+if (empty($puan_durumu) || !$sampiyon) { header("Location: cl.php"); exit; }
 
 if(isset($_POST['yeni_sezona_gec'])) {
     
@@ -106,19 +139,30 @@ if(isset($_POST['yeni_sezona_gec'])) {
             <i class="fa-solid fa-trophy mb-3" style="font-size: 4rem; color: var(--gold);"></i>
             <div class="text-muted fw-bold mb-2" style="letter-spacing: 2px;"><?= $guncel_sezon ?> - <?= $guncel_sezon + 1 ?> AVRUPA ŞAMPİYONU</div>
             
-            <img src="<?= $sampiyon['logo'] ?>" class="champ-logo">
+            <img src="<?= htmlspecialchars($sampiyon['logo']) ?>" class="champ-logo">
             
-            <h1 class="font-oswald" style="font-size: 4.5rem; color: var(--gold); line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.8);"><?= $sampiyon['takim_adi'] ?></h1>
-            <p class="fs-5 mt-3 text-light">Kıtayı fethederek Avrupa'nın en büyüğü oldular!</p>
+            <h1 class="font-oswald" style="font-size: 4.5rem; color: var(--gold); line-height: 1; text-shadow: 0 5px 15px rgba(0,0,0,0.8);">🏆 <?= htmlspecialchars($sampiyon['takim_adi']) ?></h1>
+            <p class="fs-5 mt-3 text-light">Final maçını kazanarak Avrupa'nın en büyüğü oldular!</p>
+
+            <?php if($final_skor): ?>
+            <div style="margin: 15px auto; background: rgba(0,0,0,0.6); border: 1px solid rgba(0,229,255,0.3); border-radius: 12px; padding: 14px 30px; display: inline-block;">
+                <div style="color:#94a3b8; font-size:0.8rem; letter-spacing:2px; margin-bottom:6px;">FİNAL SKORU</div>
+                <div style="font-family:'Oswald',sans-serif; font-size:2rem; color:#fff; font-weight:900;"><?= htmlspecialchars($final_skor) ?></div>
+            </div>
+            <?php endif; ?>
             
             <div class="season-summary">
                 <div class="summary-item">
-                    <div class="summary-title">UEFA ŞAMPİYONLUK ÖDÜLÜ</div>
-                    <div class="summary-val mt-1">€100.0M</div>
+                    <div class="summary-title">🏆 ŞAMPİYON</div>
+                    <div class="summary-val mt-1" style="color:var(--gold);"><?= htmlspecialchars($sampiyon['takim_adi']) ?></div>
                 </div>
                 <div class="summary-item">
-                    <div class="summary-title">FİNALİST (İKİNCİ)</div>
-                    <div class="summary-val mt-1 text-white" style="font-size: 1.2rem;"><?= $ikinci ? $ikinci['takim_adi'] : 'Bilinmiyor' ?></div>
+                    <div class="summary-title">🥈 FİNALİST</div>
+                    <div class="summary-val mt-1 text-white" style="font-size: 1.2rem;"><?= $finalist ? htmlspecialchars($finalist['takim_adi']) : 'Bilinmiyor' ?></div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-title">UEFA ŞAMPİYONLUK ÖDÜLÜ</div>
+                    <div class="summary-val mt-1">€100.0M</div>
                 </div>
             </div>
 
