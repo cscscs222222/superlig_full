@@ -171,75 +171,145 @@ $benim_macim_var_mi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta=$h
 </head>
 <body>
 
+    <!-- TOP NAV -->
+    <nav style="background: rgba(5,11,20,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,229,255,0.2); padding: 0 2rem; height: 65px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000;">
+        <a href="cl.php" style="color:#00e5ff; font-family:'Oswald',sans-serif; font-size:1.3rem; text-decoration:none; display:flex; align-items:center; gap:8px;">
+            <i class="fa-solid fa-futbol"></i> CHAMPIONS LEAGUE
+        </a>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="cl.php" class="tab-btn" style="padding:8px 16px; font-size:0.9rem;"><i class="fa-solid fa-list-ol me-1"></i>Lig Tablosu</a>
+            <a href="cl_kadro.php" class="tab-btn" style="padding:8px 16px; font-size:0.9rem;"><i class="fa-solid fa-users me-1"></i>Kadro</a>
+            <a href="cl_puan.php" class="tab-btn" style="padding:8px 16px; font-size:0.9rem;"><i class="fa-solid fa-chart-bar me-1"></i>İstatistik</a>
+        </div>
+    </nav>
+
+    <!-- HERO -->
     <div class="hero-banner">
-        <h1 class="font-oswald" style="color: #00e5ff; font-size: 3.5rem; text-shadow: 0 0 30px rgba(0,229,255,0.5);">ROAD TO GLORY</h1>
-        <h3 class="text-muted"><?= $asama_map[$asama]['ad'] ?></h3>
+        <div style="display:inline-block; background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.3); border-radius: 50px; padding: 6px 20px; margin-bottom: 16px;">
+            <span style="color:#00e5ff; font-size:0.85rem; font-weight:700; letter-spacing:3px;">UEFA CHAMPIONS LEAGUE</span>
+        </div>
+        <h1 class="font-oswald" style="color: #ffffff; font-size: 3rem; text-shadow: 0 0 30px rgba(0,229,255,0.4); margin-bottom: 6px;">ROAD TO GLORY</h1>
+        <h3 style="color:#00e5ff; font-family:'Oswald',sans-serif; font-size:1.4rem; letter-spacing:2px;"><?= $asama_map[$asama]['ad'] ?></h3>
         
-        <?php if($hafta == 9 || $hafta == 10): ?>
-            <?php if($benim_macim_var_mi == 0): ?>
-                <div class="alert alert-info mt-3 mx-auto" style="max-width: 600px; border: 1px dashed #00e5ff; background: rgba(0,229,255,0.1);">
-                    <i class="fa-solid fa-star text-warning fs-4 me-2"></i> 
-                    <strong>Tebrikler!</strong> Takımınız İlk 8'e girdiği için Play-Off turunu BAY geçiyor. Rakiplerinize Son 16'da başarılar!
+        <!-- TOURNAMENT PROGRESS BAR -->
+        <div style="display:flex; justify-content:center; gap:0; margin: 20px auto; max-width: 700px; background: rgba(255,255,255,0.03); border-radius: 8px; overflow:hidden; border: 1px solid rgba(0,229,255,0.1);">
+            <?php
+            $stages = ['po'=>'PLAY-OFF','s16'=>'SON 16','cf'=>'ÇEYREK','yf'=>'YARI FİNAL','f'=>'FİNAL'];
+            $stage_order = ['po','s16','cf','yf','f'];
+            $current_idx = array_search($asama, $stage_order);
+            foreach($stages as $k => $label):
+                $idx = array_search($k, $stage_order);
+                $is_active = ($k == $asama);
+                $is_done = ($idx < $current_idx);
+                $bg = $is_active ? 'rgba(0,229,255,0.25)' : ($is_done ? 'rgba(0,229,255,0.08)' : 'transparent');
+                $color = $is_active ? '#00e5ff' : ($is_done ? '#4ade80' : '#475569');
+                $border = $is_active ? 'border-bottom: 3px solid #00e5ff;' : ($is_done ? 'border-bottom: 3px solid #4ade80;' : 'border-bottom: 3px solid transparent;');
+            ?>
+            <div style="flex:1; padding:10px 5px; text-align:center; background:<?=$bg?>; <?=$border?> transition:0.3s;">
+                <div style="color:<?=$color?>; font-family:'Oswald',sans-serif; font-size:0.75rem; letter-spacing:1px;"><?=$label?></div>
+                <?php if($is_done): ?><div style="color:#4ade80; font-size:0.7rem;">✓ Bitti</div><?php endif; ?>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
+        <?php if(($hafta == 9 || $hafta == 10) && $benim_macim_var_mi == 0): ?>
+            <div style="max-width: 550px; margin: 10px auto; background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.4); border-radius: 10px; padding: 14px 20px; display:flex; align-items:center; gap:12px;">
+                <i class="fa-solid fa-star text-warning fs-4"></i>
+                <div style="text-align:left;">
+                    <strong style="color:#fbbf24;">Tebrikler! İlk 8'e Girdiniz!</strong>
+                    <div style="color:#94a3b8; font-size:0.85rem; margin-top:2px;">Takımınız Play-Off turunu atlıyor. Direkt Son 16'ya katılıyorsunuz.</div>
                 </div>
-            <?php endif; ?>
+            </div>
         <?php endif; ?>
 
-        <div class="mt-4 d-flex justify-content-center gap-3">
-            <a href="cl.php" class="btn btn-outline-light fw-bold px-4 py-2"><i class="fa-solid fa-arrow-left"></i> Lig Tablosu</a>
-            
+        <div class="mt-3 d-flex justify-content-center gap-3 flex-wrap">
             <?php if($hafta > 17): ?>
-                <a href="cl_sezon_gecisi.php" class="btn btn-warning fw-bold font-oswald text-dark px-4 py-2" style="font-size: 1.1rem; box-shadow: 0 0 15px rgba(255,193,7,0.5);">🏆 KUPA TÖRENİ & SEZONU BİTİR</a>
+                <a href="cl_sezon_gecisi.php" class="btn btn-warning fw-bold font-oswald text-dark px-4 py-3" style="font-size: 1.1rem; box-shadow: 0 0 20px rgba(255,193,7,0.5); border-radius:8px;">
+                    🏆 KUPA TÖRENİ &amp; SEZONU BİTİR
+                </a>
             <?php else: ?>
-                <a href="?asama=<?= $asama ?>&simule=1&full=1" class="btn btn-info fw-bold text-dark px-4 py-2">
-                    <i class="fa-solid fa-forward-fast"></i> Aktif Turu Simüle Et
+                <a href="?asama=<?= $asama ?>&simule=1&full=1" 
+                   style="background: linear-gradient(90deg,#1d4ed8,#00e5ff); color:#000; font-family:'Oswald',sans-serif; font-weight:800; padding:12px 30px; border-radius:8px; text-decoration:none; font-size:1.1rem; letter-spacing:1px; box-shadow:0 0 20px rgba(0,229,255,0.4);">
+                    <i class="fa-solid fa-forward-fast me-2"></i> AKTİF TURU SİMÜLE ET
                 </a>
             <?php endif; ?>
         </div>
     </div>
 
-    <div class="container pb-5" style="max-width: 1000px;">
+    <div class="container pb-5" style="max-width: 1050px;">
         
+        <!-- PHASE TABS -->
         <div class="nav-tabs-custom">
-            <?php foreach($asama_map as $key => $data): ?>
-                <a href="?asama=<?= $key ?>" class="tab-btn <?= $asama == $key ? 'active' : '' ?>">
+            <?php 
+            $tab_icons = ['po'=>'fa-shield-halved','s16'=>'fa-trophy','cf'=>'fa-star','yf'=>'fa-fire','f'=>'fa-crown'];
+            foreach($asama_map as $key => $data): 
+                $is_locked = false;
+                if($key=='s16' && $hafta < 11) $is_locked = true;
+                if($key=='cf' && $hafta < 13) $is_locked = true;
+                if($key=='yf' && $hafta < 15) $is_locked = true;
+                if($key=='f' && $hafta < 17) $is_locked = true;
+            ?>
+                <a href="<?= $is_locked ? '#' : '?asama='.$key ?>" 
+                   class="tab-btn <?= $asama == $key ? 'active' : '' ?>"
+                   style="<?= $is_locked ? 'opacity:0.45; cursor:not-allowed;' : '' ?>">
+                    <i class="fa-solid <?= $tab_icons[$key] ?> me-1"></i>
                     <?= $data['ad'] ?>
+                    <?php if($is_locked): ?><i class="fa-solid fa-lock ms-1" style="font-size:0.7rem;"></i><?php endif; ?>
                 </a>
             <?php endforeach; ?>
         </div>
 
         <?php if(empty($maclar_ui)): ?>
             <div class="text-center p-5" style="background: rgba(15,23,42,0.8); border: 1px dashed rgba(0,229,255,0.3); border-radius: 15px;">
-                <i class="fa-solid fa-lock text-muted mb-3" style="font-size: 3rem;"></i>
-                <h4 class="font-oswald text-muted">EŞLEŞMELER HENÜZ BELLİ OLMADI</h4>
-                <p class="text-muted">Bu aşamanın maçları, bir önceki tur tamamlandıktan sonra çekilecektir.</p>
+                <i class="fa-solid fa-lock text-muted mb-3" style="font-size: 3.5rem;"></i>
+                <h4 class="font-oswald text-muted mt-3">EŞLEŞMELER HENÜZ BELLİ OLMADI</h4>
+                <p class="text-muted">Bu aşamanın maçları, bir önceki tur tamamlandıktan sonra otomatik olarak belirlenir.</p>
+                <a href="?asama=po" class="btn btn-outline-info mt-2">← Aktif Aşamaya Dön</a>
             </div>
         <?php else: ?>
             
+            <?php 
+            // Group matches by round pair (e.g., leg 1 & leg 2)
+            $tur_haftalari = $asama_map[$asama]['h'];
+            if(count($tur_haftalari) == 2):
+                $tur1 = array_filter($maclar_ui, fn($m) => $m['hafta'] == $tur_haftalari[0]);
+                $tur2 = array_filter($maclar_ui, fn($m) => $m['hafta'] == $tur_haftalari[1]);
+                if(!empty($tur1)):
+            ?>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:10px;">
+                <h5 class="font-oswald text-center" style="color:#00e5ff; font-size:1rem; border-bottom:1px solid rgba(0,229,255,0.2); padding-bottom:8px;">İLK BACAK</h5>
+                <h5 class="font-oswald text-center" style="color:#00e5ff; font-size:1rem; border-bottom:1px solid rgba(0,229,255,0.2); padding-bottom:8px;">RÖVANŞ</h5>
+            </div>
+            <?php endif; ?>
+            <?php endif; ?>
+
             <?php foreach($maclar_ui as $mac): ?>
                 <div class="match-card">
                     <div class="score-grid">
                         <div class="team-block home">
-                            <span class="team-name"><?= $mac['ev_ad'] ?></span>
+                            <span class="team-name"><?= htmlspecialchars($mac['ev_ad']) ?></span>
                             <img src="<?= $mac['ev_logo'] ?>" class="team-logo">
                         </div>
                         <div class="vs-box">
                             <?php if($mac['ev_skor'] !== null): ?>
                                 <span class="match-score"><?= $mac['ev_skor'] ?> - <?= $mac['dep_skor'] ?></span>
-                                <span class="match-status" style="color: #cbd5e1;">MS</span>
+                                <span class="match-status" style="color:#4ade80; font-size:0.7rem;">MAÇ BİTTİ</span>
                             <?php else: ?>
-                                <span class="match-score">VS</span>
+                                <span class="match-score" style="font-size:1.4rem; color:#475569;">vs</span>
                                 <span class="match-status">HAFTA <?= $mac['hafta'] ?></span>
                             <?php endif; ?>
                         </div>
                         <div class="team-block away">
                             <img src="<?= $mac['dep_logo'] ?>" class="team-logo">
-                            <span class="team-name"><?= $mac['dep_ad'] ?></span>
+                            <span class="team-name"><?= htmlspecialchars($mac['dep_ad']) ?></span>
                         </div>
                     </div>
                     
                     <?php if($mac['ev_skor'] === null): ?>
-                        <div class="text-center bg-dark p-2 border-top border-secondary">
-                            <a href="../canli_mac.php?id=<?= $mac['id'] ?>&lig=cl&hafta=<?= $mac['hafta'] ?>" class="btn btn-outline-info px-4 fw-bold"><i class="fa-solid fa-satellite-dish"></i> CANLI İZLE</a>
+                        <div class="text-center p-2 border-top" style="border-color:rgba(0,229,255,0.1); background:rgba(0,0,0,0.3);">
+                            <a href="../canli_mac.php?id=<?= $mac['id'] ?>&lig=cl&hafta=<?= $mac['hafta'] ?>" class="btn btn-outline-info px-4 fw-bold" style="font-size:0.9rem;">
+                                <i class="fa-solid fa-satellite-dish me-1"></i> CANLI İZLE
+                            </a>
                         </div>
                     <?php else: ?>
                         <?php 
@@ -256,11 +326,11 @@ $benim_macim_var_mi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta=$h
                                 foreach($ev_olaylar as $o) {
                                     if(strtolower($o['tip'] ?? 'gol') != 'gol') continue; 
                                     $asist = (isset($o['asist']) && $o['asist'] !== '-') ? "<span class='event-assist'>(A: {$o['asist']})</span>" : "";
-                                    echo "<div class='event-item justify-content-end'>$asist {$o['oyuncu']} <span class='event-time'>{$o['dakika']}'</span> <i class='fa-solid fa-futbol text-success fs-5'></i></div>"; 
+                                    echo "<div class='event-item justify-content-end'>$asist ".htmlspecialchars($o['oyuncu'])." <span class='event-time'>{$o['dakika']}'</span> <i class='fa-solid fa-futbol text-success'></i></div>"; 
                                 }
                                 foreach($ev_kartlar as $k) { 
                                     $tip = $k['detay'] ?? ($k['tip'] ?? 'Sarı'); $renk = ($tip == 'Kırmızı') ? 'red' : 'yellow';
-                                    echo "<div class='event-item justify-content-end'>{$k['oyuncu']} <span class='event-time'>{$k['dakika']}'</span> <div class='ref-card $renk'></div></div>"; 
+                                    echo "<div class='event-item justify-content-end'>".htmlspecialchars($k['oyuncu'])." <span class='event-time'>{$k['dakika']}'</span> <div class='ref-card $renk'></div></div>"; 
                                 }
                                 ?>
                             </div>
@@ -270,11 +340,11 @@ $benim_macim_var_mi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta=$h
                                 foreach($dep_olaylar as $o) {
                                     if(strtolower($o['tip'] ?? 'gol') != 'gol') continue; 
                                     $asist = (isset($o['asist']) && $o['asist'] !== '-') ? "<span class='event-assist'>(A: {$o['asist']})</span>" : "";
-                                    echo "<div class='event-item'><i class='fa-solid fa-futbol text-success fs-5'></i> <span class='event-time'>{$o['dakika']}'</span> {$o['oyuncu']} $asist</div>"; 
+                                    echo "<div class='event-item'><i class='fa-solid fa-futbol text-success'></i> <span class='event-time'>{$o['dakika']}'</span> ".htmlspecialchars($o['oyuncu'])." $asist</div>"; 
                                 }
                                 foreach($dep_kartlar as $k) { 
                                     $tip = $k['detay'] ?? ($k['tip'] ?? 'Sarı'); $renk = ($tip == 'Kırmızı') ? 'red' : 'yellow';
-                                    echo "<div class='event-item'><div class='ref-card $renk'></div> <span class='event-time'>{$k['dakika']}'</span> {$k['oyuncu']}</div>"; 
+                                    echo "<div class='event-item'><div class='ref-card $renk'></div> <span class='event-time'>{$k['dakika']}'</span> ".htmlspecialchars($k['oyuncu'])."</div>"; 
                                 }
                                 ?>
                             </div>
@@ -285,5 +355,6 @@ $benim_macim_var_mi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE hafta=$h
             <?php endforeach; ?>
         <?php endif; ?>
     </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
