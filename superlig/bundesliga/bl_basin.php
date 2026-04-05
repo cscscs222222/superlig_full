@@ -195,7 +195,7 @@ function getMoralEmoji($moral) {
                             <div class="text-center py-5">
                                 <i class="fa-solid fa-circle-check text-success" style="font-size: 4rem; margin-bottom: 15px;"></i>
                                 <h4 class="font-oswald">PRESSEKONFERENZ TAMAMLANDI</h4>
-                                <p class="text-muted">Alman basınınına gerekli açıklamaları yaptınız.</p>
+                                <p class="text-muted">Alman basınına gerekli açıklamaları yaptınız.</p>
                             </div>
                         <?php else: ?>
                             <div class="mb-4">

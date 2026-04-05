@@ -155,16 +155,16 @@ if(isset($_GET['idx'])) {
                 elseif($deger >= 1000000) $ovr = rand(67, 69);
                 else $ovr = rand(62, 66);
 
-                // MEGA YILDIZLARI KORUMA
+                // MEGA YILDIZLARI KORUMA (BUNDESLIGA)
                 $isim_kucuk = mb_strtolower($isim, 'UTF-8');
-                if(strpos($isim_kucuk, 'vinicius') !== false) $ovr = 92;
-                if(strpos($isim_kucuk, 'bellingham') !== false) $ovr = 91;
-                if(strpos($isim_kucuk, 'yamal') !== false) $ovr = 87;
-                if(strpos($isim_kucuk, 'pedri') !== false) $ovr = 87;
-                if(strpos($isim_kucuk, 'griezmann') !== false) $ovr = 88;
-                if(strpos($isim_kucuk, 'oblak') !== false) $ovr = 88;
-                if(strpos($isim_kucuk, 'lewandowski') !== false) $ovr = 89;
-                if(strpos($isim_kucuk, 'courtois') !== false) $ovr = 90;
+                if(strpos($isim_kucuk, 'kane') !== false) $ovr = 92;
+                if(strpos($isim_kucuk, 'musiala') !== false) $ovr = 91;
+                if(strpos($isim_kucuk, 'neuer') !== false) $ovr = 90;
+                if(strpos($isim_kucuk, 'wirtz') !== false) $ovr = 90;
+                if(strpos($isim_kucuk, 'kimmich') !== false) $ovr = 89;
+                if(strpos($isim_kucuk, 'sané') !== false || strpos($isim_kucuk, 'sane') !== false) $ovr = 88;
+                if(strpos($isim_kucuk, 'gnabry') !== false) $ovr = 87;
+                if(strpos($isim_kucuk, 'ter stegen') !== false) $ovr = 88;
 
                 $yas = rand(18, 34);
                 $form = rand(5, 9);
@@ -224,7 +224,7 @@ if(isset($_GET['idx'])) {
     <div class="hero-box">
         <div style="font-size: 4rem; margin-bottom: 15px;">🇩🇪</div>
         <h1 class="fw-bold text-white text-uppercase" style="letter-spacing: 2px;">BUNDESLIGA GÜNCEL KADRO PAKETİ</h1>
-        <p class="fs-5 text-light opacity-75">Tüm eski oyuncular kalıcı olarak silinecek, 20 Alman kulübünün <strong>tam ve en güncel aktif kadroları</strong> çekilip En İyi 11'leri otomatik dizilecektir.</p>
+        <p class="fs-5 text-light opacity-75">Tüm eski oyuncular kalıcı olarak silinecek, 18 Alman kulübünün <strong>tam ve en güncel aktif kadroları</strong> çekilip En İyi 11'leri otomatik dizilecektir.</p>
         
         <a href="?basla=1" class="btn btn-dark btn-lg fw-bold px-5 py-3 mt-4 rounded-pill shadow-lg" onclick="return confirm('DİKKAT: Mevcut tüm Bundesliga oyuncu verileri silinecek! Devam etmek istiyor musunuz?')">
             <i class="fa-solid fa-power-off"></i> BUNDESLIGA KADRO MOTORUNU BAŞLAT
