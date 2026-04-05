@@ -31,18 +31,21 @@ function get_kazananlar($pdo, $h1, $h2) {
 
 // --- OTOMATİK EŞLEŞME MOTORU (SWISS SİSTEMİ) ---
 if ($hafta == 9 && !mac_var_mi($pdo, 9)) {
-    // SADECE 9 VE 24. SIRALAR ARASI PLAY-OFF OYNAR! (İlk 8 dinleniyor)
-    $takimlar = $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC LIMIT 8, 16")->fetchAll(PDO::FETCH_COLUMN);
-    if(count($takimlar) == 16) {
-        for($i=0; $i<8; $i++) {
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$takimlar[$i]}, {$takimlar[15-$i]}, 9)");
-            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$takimlar[15-$i]}, {$takimlar[$i]}, 10)");
+    // SADECE 9 İLE 24. SIRALAR ARASI PLAY-OFF OYNAR! (İlk 8 dinleniyor, 25-36 eleniyor)
+    $takimlar = $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC LIMIT 8, 16")->fetchAll(PDO::FETCH_COLUMN);
+    $n = count($takimlar);
+    // En az 8 takım ve çift sayıda olmalı (her eşleşme için 2 takım)
+    if($n >= 8 && $n % 2 == 0) {
+        $yari = $n / 2;
+        for($i=0; $i<$yari; $i++) {
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$takimlar[$i]}, {$takimlar[$n-1-$i]}, 9)");
+            $pdo->exec("INSERT INTO cl_maclar (ev, dep, hafta) VALUES ({$takimlar[$n-1-$i]}, {$takimlar[$i]}, 10)");
         }
     }
 }
 if ($hafta == 11 && !mac_var_mi($pdo, 11)) {
     // İLK 8 TAKIM SAHNEYE ÇIKAR! Play-Off kazananlarıyla eşleşirler.
-    $ilk8 = $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC LIMIT 8")->fetchAll(PDO::FETCH_COLUMN);
+    $ilk8 = $pdo->query("SELECT id FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC LIMIT 8")->fetchAll(PDO::FETCH_COLUMN);
     $playoff = get_kazananlar($pdo, 9, 10);
     if(count($playoff) == 8 && count($ilk8) == 8) {
         for($i=0; $i<8; $i++) {
