@@ -232,14 +232,13 @@ include 'db.php';
                 </div>
             </a>
 
-            <div class="mode-card de" style="cursor: not-allowed; opacity: 0.7;">
-                <span class="coming-soon-badge">Yakında</span>
+            <a href="bundesliga/bundesliga.php" class="mode-card de">
                 <div class="card-content">
                     <div class="card-icon"><i class="fa-solid fa-bolt"></i></div>
                     <h2 class="card-title">BUNDESLIGA</h2>
                     <div class="card-desc">Alman futbolunun gücü ve disiplini ile şampiyonluğa yürü.</div>
                 </div>
-            </div>
+            </a>
 
             <div class="mode-card fr" style="cursor: not-allowed; opacity: 0.7;">
                 <span class="coming-soon-badge">Yakında</span>
