@@ -249,7 +249,7 @@ try {
                                     
                                     $row_class = "";
                                     if($sira <= 8) $row_class = "zone-direct"; 
-                                    elseif($sira <= 16) $row_class = "zone-playoff"; 
+                                    elseif($sira <= 24) $row_class = "zone-playoff"; 
                                     else $row_class = "zone-eliminated"; 
 
                                     if($t['id'] == $kullanici_takim_id) $row_class .= " my-team-row";
@@ -294,8 +294,8 @@ try {
                     <div class="px-4 py-3 border-top" style="border-color: var(--border-color); background: rgba(0,0,0,0.5); font-size:0.8rem; font-weight:600; color:var(--cl-silver);">
                         <div class="d-flex flex-wrap gap-4 justify-content-center">
                             <div class="d-flex align-items-center gap-2"><div style="width:12px;height:12px;background:var(--cl-accent);border-radius:2px; box-shadow: 0 0 5px var(--cl-accent);"></div> İlk 8: Doğrudan Son 16</div>
-                            <div class="d-flex align-items-center gap-2"><div style="width:12px;height:12px;background:#fbbf24;border-radius:2px;"></div> 9-16: Play-Off Turu</div>
-                            <div class="d-flex align-items-center gap-2"><div style="width:12px;height:12px;background:var(--color-loss);border-radius:2px;"></div> 17-18: Elenir</div>
+                            <div class="d-flex align-items-center gap-2"><div style="width:12px;height:12px;background:#fbbf24;border-radius:2px;"></div> 9-24: Play-Off Turu</div>
+                            <div class="d-flex align-items-center gap-2"><div style="width:12px;height:12px;background:var(--color-loss);border-radius:2px;"></div> 25-36: Elenir</div>
                         </div>
                     </div>
                 </div>

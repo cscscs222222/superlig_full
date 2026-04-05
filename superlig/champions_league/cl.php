@@ -70,7 +70,7 @@ function uefa_puani_ekle($pdo, $takim_id, $puan) {
 }
 
 $cl_takim_sayisi = $pdo->query("SELECT COUNT(*) FROM cl_takimlar")->fetchColumn();
-if ($cl_takim_sayisi < 25) {
+if ($cl_takim_sayisi < 37) {
     $devler = [
         ['Real Madrid', 'https://cdn-icons-png.flaticon.com/512/5041/5041042.png', 95, 92],
         ['Manchester City', 'https://cdn-icons-png.flaticon.com/512/825/825501.png', 96, 90],
@@ -96,6 +96,18 @@ if ($cl_takim_sayisi < 25) {
         ['Sporting CP', 'https://cdn-icons-png.flaticon.com/512/5041/5041071.png', 79, 80],
         ['Celtic', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 78, 77],
         ['Club Brugge', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 77, 78],
+        ['RB Leipzig', 'https://cdn-icons-png.flaticon.com/512/5041/5041052.png', 85, 83],
+        ['Tottenham', 'https://cdn-icons-png.flaticon.com/512/825/825503.png', 84, 82],
+        ['Aston Villa', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 83, 81],
+        ['Feyenoord', 'https://cdn-icons-png.flaticon.com/512/5041/5041049.png', 80, 79],
+        ['Monaco', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 79, 78],
+        ['Atalanta', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 83, 80],
+        ['Brest', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 75, 74],
+        ['Sturm Graz', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 73, 72],
+        ['Slovan Bratislava', 'https://cdn-icons-png.flaticon.com/512/825/825530.png', 71, 70],
+        ['Girona', 'https://cdn-icons-png.flaticon.com/512/5041/5041040.png', 76, 75],
+        ['Shakhtar', 'https://cdn-icons-png.flaticon.com/512/5041/5041068.png', 78, 76],
+        ['Red Star', 'https://cdn-icons-png.flaticon.com/512/825/825528.png', 74, 73],
     ];
     foreach($devler as $d) {
         $ad = $d[0]; $logo = $d[1]; $huc = $d[2]; $sav = $d[3];
@@ -141,8 +153,8 @@ $hafta = $ayar['hafta'] ?? 1;
 $sezon_yili = $ayar['sezon_yil'] ?? 2025;
 $kullanici_takim = $ayar['kullanici_takim_id'] ?? null;
 
-$max_hafta = $pdo->query("SELECT MAX(hafta) FROM cl_maclar WHERE sezon_yil = $sezon_yili")->fetchColumn();
-if(!$max_hafta) $max_hafta = 17;
+$max_hafta = $pdo->query("SELECT MAX(hafta) FROM cl_maclar WHERE sezon_yil = $sezon_yili AND hafta <= 8")->fetchColumn();
+if(!$max_hafta) $max_hafta = 8;
 
 $mac_sayisi = 0;
 try { $mac_sayisi = $pdo->query("SELECT COUNT(*) FROM cl_maclar WHERE sezon_yil = $sezon_yili")->fetchColumn(); } catch(Throwable $e){}
@@ -227,7 +239,8 @@ if(isset($_GET['action'])) {
             $pdo->exec("UPDATE cl_oyuncular SET ceza_hafta = GREATEST(0, ceza_hafta - 1) WHERE ceza_hafta > 0");
             $pdo->exec("UPDATE cl_oyuncular SET fitness = GREATEST(30, fitness - ROUND(RAND() * 15 + 5)) WHERE ilk_11 = 1");
             $pdo->exec("UPDATE cl_oyuncular SET fitness = LEAST(100, fitness + ROUND(RAND() * 20 + 10)) WHERE ilk_11 = 0");
-            $pdo->exec("UPDATE cl_ayar SET hafta = LEAST($max_hafta, hafta + 1)"); 
+            // Lig aşaması en fazla 8 haftadır; 8 bittikten sonra hafta = 9 ile eleme turlarına geçilir
+            $pdo->exec("UPDATE cl_ayar SET hafta = LEAST(9, hafta + 1)"); 
         }
         header("Location: cl.php?hafta=$hedef_hafta"); exit;
     }
@@ -278,7 +291,8 @@ if(isset($_GET['action'])) {
             $pdo->exec("UPDATE cl_oyuncular SET ceza_hafta = GREATEST(0, ceza_hafta - 1) WHERE ceza_hafta > 0");
             $pdo->exec("UPDATE cl_oyuncular SET fitness = GREATEST(30, fitness - ROUND(RAND() * 15 + 5)) WHERE ilk_11 = 1");
             $pdo->exec("UPDATE cl_oyuncular SET fitness = LEAST(100, fitness + ROUND(RAND() * 20 + 10)) WHERE ilk_11 = 0");
-            $pdo->exec("UPDATE cl_ayar SET hafta = LEAST($max_hafta, hafta + 1)"); 
+            // Lig aşaması en fazla 8 haftadır; 8 bittikten sonra hafta = 9 ile eleme turlarına geçilir
+            $pdo->exec("UPDATE cl_ayar SET hafta = LEAST(9, hafta + 1)"); 
         }
         header("Location: cl.php"); exit;
     }
@@ -322,6 +336,9 @@ if(isset($_GET['action'])) {
         header("Location: cl_nokaut.php"); exit;
     }
 }
+
+// Lig aşaması (hafta 1-8) bittiyse, eleme turlarına yönlendir
+if($hafta > 8) { header("Location: cl_nokaut.php"); exit; }
 
 $puan_durumu = $pdo->query("SELECT * FROM cl_takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -410,6 +427,8 @@ if($kullanici_takim) {
         .data-table tbody tr td:first-child { border-left: 4px solid transparent; }
         .zone-direct td:first-child { border-left-color: var(--cl-accent) !important; background: rgba(0,229,255,0.05); }
         .zone-playoff td:first-child { border-left-color: #fbbf24 !important; }
+        .zone-eliminated td:first-child { border-left-color: var(--color-loss) !important; }
+        .zone-eliminated td { opacity: 0.6; }
 
         .fixture-wrapper { display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding: 1rem; flex: 1; }
         
@@ -541,6 +560,7 @@ if($kullanici_takim) {
                                         $row_class = "";
                                         if($sira <= 8) $row_class = "zone-direct"; 
                                         elseif($sira <= 24) $row_class = "zone-playoff"; 
+                                        else $row_class = "zone-eliminated";
                                         
                                         $av = $t['atilan_gol'] - $t['yenilen_gol'];
                                     ?>
@@ -567,6 +587,7 @@ if($kullanici_takim) {
                         <div class="p-3 border-top d-flex flex-wrap gap-3 align-items-center" style="border-color:var(--border-color); font-size:0.88rem; background:rgba(0,0,0,0.5);">
                             <span style="color:var(--cl-accent); font-weight:700;"><i class="fa-solid fa-square me-1"></i>1-8: Son 16 (Direkt)</span>
                             <span class="text-warning" style="font-weight:700;"><i class="fa-solid fa-square me-1"></i>9-24: Play-Off</span>
+                            <span class="text-danger" style="font-weight:700;"><i class="fa-solid fa-square me-1"></i>25-36: Elenir</span>
                             <span class="text-muted ms-auto fst-italic" style="font-size:0.8rem;">Swiss System · 8 Maç Günü</span>
                         </div>
                         
