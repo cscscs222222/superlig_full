@@ -412,6 +412,12 @@ if($kullanici_takim) {
 
         .hover-lift { transition: 0.3s; cursor: pointer; }
         .hover-lift:hover { transform: translateY(-5px); }
+        
+        @keyframes pulse_glow {
+            0% { box-shadow: 0 0 10px rgba(245,197,24,0.5); }
+            50% { box-shadow: 0 0 30px rgba(245,197,24,0.8), 0 0 50px rgba(200,16,46,0.3); }
+            100% { box-shadow: 0 0 10px rgba(245,197,24,0.5); }
+        }
     </style>
 </head>
 <body>
@@ -421,9 +427,12 @@ if($kullanici_takim) {
         
         <div class="nav-menu d-none d-lg-flex gap-3">
             <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez Hub</a>
-            <a href="#" class="nav-link-item text-white fw-bold"><i class="fa-solid fa-tv"></i> Maç Merkezi</a>
-            <a href="../super_lig/superlig.php" class="nav-link-item"><i class="fa-solid fa-moon"></i> Süper Lig</a>
-            <a href="../premier_lig/premier_lig.php" class="nav-link-item"><i class="fa-solid fa-crown"></i> Premier League</a>
+            <a href="la_liga.php" class="nav-link-item text-white fw-bold" style="text-shadow: 0 0 10px var(--es-secondary);"><i class="fa-solid fa-tv"></i> Maç Merkezi</a>
+            <a href="ll_kadro.php" class="nav-link-item"><i class="fa-solid fa-users"></i> Kadro / Taktik</a>
+            <a href="ll_transfer.php" class="nav-link-item"><i class="fa-solid fa-comments-dollar"></i> Transfer</a>
+            <a href="ll_puan.php" class="nav-link-item"><i class="fa-solid fa-chart-pie"></i> İstatistik</a>
+            <a href="ll_basin.php" class="nav-link-item"><i class="fa-solid fa-microphone"></i> Medya</a>
+            <a href="ll_tesisler.php" class="nav-link-item"><i class="fa-solid fa-building"></i> Tesisler</a>
         </div>
 
         <div class="d-flex gap-3">
@@ -635,6 +644,34 @@ if($kullanici_takim) {
 
             </div>
         </div>
+    <?php endif; ?>
+
+    <?php if($kullanici_takim): ?>
+    <div class="d-flex d-lg-none fixed-bottom p-2 justify-content-around align-items-center border-top" style="background: rgba(21,0,3,0.97); backdrop-filter: blur(10px); z-index:2000; padding-bottom: 15px !important; border-top-color: var(--es-secondary) !important;">
+        <a href="la_liga.php" class="text-decoration-none text-center fw-bold" style="font-size: 0.8rem; width: 20%; color: var(--es-secondary);">
+            <i class="fa-solid fa-tv fs-5 mb-1 d-block"></i> Fikstür
+        </a>
+        <a href="ll_kadro.php" class="text-secondary text-decoration-none text-center" style="font-size: 0.8rem; width: 20%;">
+            <i class="fa-solid fa-users fs-5 mb-1 d-block text-white"></i> Kadro
+        </a>
+        <a href="ll_transfer.php" class="text-secondary text-decoration-none text-center" style="font-size: 0.8rem; width: 20%;">
+            <i class="fa-solid fa-comments-dollar fs-5 mb-1 d-block text-white"></i> Transfer
+        </a>
+        <a href="ll_puan.php" class="text-secondary text-decoration-none text-center" style="font-size: 0.8rem; width: 20%;">
+            <i class="fa-solid fa-chart-pie fs-5 mb-1 d-block text-white"></i> Veri
+        </a>
+        <a href="ll_basin.php" class="text-secondary text-decoration-none text-center" style="font-size: 0.8rem; width: 20%;">
+            <i class="fa-solid fa-microphone fs-5 mb-1 d-block text-white"></i> Medya
+        </a>
+    </div>
+    <?php endif; ?>
+
+    <?php if($kullanici_takim && $hafta > $max_hafta): ?>
+    <div style="position:fixed; bottom: 80px; left:50%; transform:translateX(-50%); z-index: 3000;">
+        <a href="ll_sezon_gecisi.php" class="btn fw-bold py-3 px-5" style="background:var(--es-secondary); color:var(--es-dark); border-radius:50px; box-shadow: 0 5px 20px rgba(245,197,24,0.5); animation: pulse_glow 2s infinite; font-size:1.1rem;">
+            <i class="fa-solid fa-trophy me-2"></i> SEZON BİTTİ! Şampiyonu Gör
+        </a>
+    </div>
     <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

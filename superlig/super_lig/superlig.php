@@ -193,6 +193,7 @@ $kalan_tum_maclar = $pdo->query("SELECT COUNT(*) FROM maclar WHERE ev_skor IS NU
                 <a href="transfer.php" class="nav-link-item"><i class="fa-solid fa-money-bill-transfer"></i> Pazar</a>
                 <a href="tesisler.php" class="nav-link-item"><i class="fa-solid fa-building"></i> Tesisler</a>
                 <a href="basin.php" class="nav-link-item"><i class="fa-solid fa-microphone"></i> Medya & Psikoloji</a>
+                <a href="../la_liga/la_liga.php" class="nav-link-item" style="color:#f5c518;"><i class="fa-solid fa-sun"></i> La Liga</a>
             </div>
         </div>
 
