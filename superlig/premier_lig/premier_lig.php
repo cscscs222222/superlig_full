@@ -403,6 +403,7 @@ if($kullanici_takim) {
             <a href="#" class="nav-link-item" onclick="alert('Yakında: PL Kadro');"><i class="fa-solid fa-users"></i> Kadro</a>
             <a href="pl_basin.php" class="nav-link-item"><i class="fa-solid fa-microphone"></i> Medya & Psikoloji</a>
             <a href="../super_lig/superlig.php" class="nav-link-item text-danger"><i class="fa-solid fa-plane"></i> Türkiye'ye Dön</a>
+            <a href="../la_liga/la_liga.php" class="nav-link-item" style="color:#f5c518;"><i class="fa-solid fa-sun"></i> La Liga</a>
         </div>
 
         <div class="d-flex gap-3">
