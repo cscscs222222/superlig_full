@@ -25,40 +25,63 @@ $tbl_ayar = $prefix . "ayar";
 
 $engine = new MatchEngine($pdo, $prefix);
 
-$mac = $pdo->query("SELECT m.*, t1.takim_adi as ev_ad, t1.logo as ev_logo, t2.takim_adi as dep_ad, t2.logo as dep_logo 
+$stmt_mac = $pdo->prepare("SELECT m.*, t1.takim_adi as ev_ad, t1.logo as ev_logo, t2.takim_adi as dep_ad, t2.logo as dep_logo 
                     FROM $tbl_maclar m 
                     JOIN $tbl_takimlar t1 ON m.ev = t1.id 
                     JOIN $tbl_takimlar t2 ON m.dep = t2.id 
-                    WHERE m.id = $mac_id")->fetch(PDO::FETCH_ASSOC);
+                    WHERE m.id = ?");
+$stmt_mac->execute([$mac_id]);
+$mac = $stmt_mac->fetch(PDO::FETCH_ASSOC);
 
 if(!$mac) { die("Maç bulunamadı."); }
 
 if($mac['ev_skor'] === NULL) {
-    $skorlar = $engine->gercekci_skor_hesapla($mac['ev'], $mac['dep'], $mac);
-    $ev_skor = $skorlar['ev']; $dep_skor = $skorlar['dep'];
-    
-    $ev_detay = $engine->mac_olay_uret($mac['ev'], $ev_skor);
-    $dep_detay = $engine->mac_olay_uret($mac['dep'], $dep_skor);
+    // İki eş zamanlı yenileme isteğinin aynı maçı iki kez oynamasını önlemek için transaction + kilitli güncelleme
+    $pdo->beginTransaction();
+    try {
+        // Skoru hâlâ NULL olan maçı kilitle; başka istek zaten güncellemiş olabilir
+        $lock = $pdo->prepare("SELECT ev_skor FROM $tbl_maclar WHERE id = ? FOR UPDATE");
+        $lock->execute([$mac_id]);
+        $kontrol = $lock->fetchColumn();
 
-    $stmt = $pdo->prepare("UPDATE $tbl_maclar SET ev_skor=?, dep_skor=?, ev_olaylar=?, dep_olaylar=?, ev_kartlar=?, dep_kartlar=? WHERE id=?");
-    $stmt->execute([$ev_skor, $dep_skor, $ev_detay['olaylar'], $dep_detay['olaylar'], $ev_detay['kartlar'], $dep_detay['kartlar'], $mac_id]);
-    
-    $pdo->exec("UPDATE $tbl_takimlar SET atilan_gol = atilan_gol + $ev_skor, yenilen_gol = yenilen_gol + $dep_skor WHERE id = {$mac['ev']}");
-    $pdo->exec("UPDATE $tbl_takimlar SET atilan_gol = atilan_gol + $dep_skor, yenilen_gol = yenilen_gol + $ev_skor WHERE id = {$mac['dep']}");
-    
-    if($ev_skor > $dep_skor) { $pdo->exec("UPDATE $tbl_takimlar SET puan=puan+3, galibiyet=galibiyet+1 WHERE id={$mac['ev']}"); $pdo->exec("UPDATE $tbl_takimlar SET malubiyet=malubiyet+1 WHERE id={$mac['dep']}"); }
-    elseif($ev_skor == $dep_skor) { $pdo->exec("UPDATE $tbl_takimlar SET puan=puan+1, beraberlik=beraberlik+1 WHERE id IN ({$mac['ev']}, {$mac['dep']})"); }
-    else { $pdo->exec("UPDATE $tbl_takimlar SET puan=puan+3, galibiyet=galibiyet+1 WHERE id={$mac['dep']}"); $pdo->exec("UPDATE $tbl_takimlar SET malubiyet=malubiyet+1 WHERE id={$mac['ev']}"); }
+        if ($kontrol === null) {
+            $skorlar = $engine->gercekci_skor_hesapla($mac['ev'], $mac['dep'], $mac);
+            $ev_skor = $skorlar['ev']; $dep_skor = $skorlar['dep'];
 
-    $hafta = $mac['hafta'];
-    $kalan_mac = $pdo->query("SELECT COUNT(*) FROM $tbl_maclar WHERE hafta = $hafta AND ev_skor IS NULL")->fetchColumn();
-    if($kalan_mac == 0) { $pdo->exec("UPDATE $tbl_ayar SET hafta = hafta + 1"); }
-    
-    $mac = $pdo->query("SELECT m.*, t1.takim_adi as ev_ad, t1.logo as ev_logo, t2.takim_adi as dep_ad, t2.logo as dep_logo 
-                        FROM $tbl_maclar m 
-                        JOIN $tbl_takimlar t1 ON m.ev = t1.id 
-                        JOIN $tbl_takimlar t2 ON m.dep = t2.id 
-                        WHERE m.id = $mac_id")->fetch(PDO::FETCH_ASSOC);
+            $ev_detay = $engine->mac_olay_uret($mac['ev'], $ev_skor);
+            $dep_detay = $engine->mac_olay_uret($mac['dep'], $dep_skor);
+
+            $stmt = $pdo->prepare("UPDATE $tbl_maclar SET ev_skor=?, dep_skor=?, ev_olaylar=?, dep_olaylar=?, ev_kartlar=?, dep_kartlar=? WHERE id=?");
+            $stmt->execute([$ev_skor, $dep_skor, $ev_detay['olaylar'], $dep_detay['olaylar'], $ev_detay['kartlar'], $dep_detay['kartlar'], $mac_id]);
+
+            $s = $pdo->prepare("UPDATE $tbl_takimlar SET atilan_gol = atilan_gol + ?, yenilen_gol = yenilen_gol + ? WHERE id = ?");
+            $s->execute([$ev_skor, $dep_skor, $mac['ev']]);
+            $s->execute([$dep_skor, $ev_skor, $mac['dep']]);
+
+            if ($ev_skor > $dep_skor) {
+                $pdo->prepare("UPDATE $tbl_takimlar SET puan=puan+3, galibiyet=galibiyet+1 WHERE id=?")->execute([$mac['ev']]);
+                $pdo->prepare("UPDATE $tbl_takimlar SET malubiyet=malubiyet+1 WHERE id=?")->execute([$mac['dep']]);
+            } elseif ($ev_skor == $dep_skor) {
+                $pdo->prepare("UPDATE $tbl_takimlar SET puan=puan+1, beraberlik=beraberlik+1 WHERE id=?")->execute([$mac['ev']]);
+                $pdo->prepare("UPDATE $tbl_takimlar SET puan=puan+1, beraberlik=beraberlik+1 WHERE id=?")->execute([$mac['dep']]);
+            } else {
+                $pdo->prepare("UPDATE $tbl_takimlar SET puan=puan+3, galibiyet=galibiyet+1 WHERE id=?")->execute([$mac['dep']]);
+                $pdo->prepare("UPDATE $tbl_takimlar SET malubiyet=malubiyet+1 WHERE id=?")->execute([$mac['ev']]);
+            }
+
+            $hafta = $mac['hafta'];
+            $stmt_kalan = $pdo->prepare("SELECT COUNT(*) FROM $tbl_maclar WHERE hafta = ? AND ev_skor IS NULL");
+            $stmt_kalan->execute([$hafta]);
+            $kalan_mac = $stmt_kalan->fetchColumn();
+            if ($kalan_mac == 0) { $pdo->prepare("UPDATE $tbl_ayar SET hafta = hafta + 1")->execute(); }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+    }
+
+    $stmt_mac->execute([$mac_id]);
+    $mac = $stmt_mac->fetch(PDO::FETCH_ASSOC);
 }
 
 // ZAMAN ÇİZELGESİ
@@ -408,8 +431,9 @@ $json_olaylar = json_encode($tum_olaylar, JSON_UNESCAPED_UNICODE);
                     document.getElementById('bar_ev_pos').style.width = "<?= $ev_topla_oynama ?>%";
                     document.getElementById('bar_dep_pos').style.width = "<?= $dep_topla_oynama ?>%";
                     
-                    let ev_sut_yuzde = (<?= $ev_sut ?> / (<?= $ev_sut+$dep_sut ?>)) * 100;
-                    let dep_sut_yuzde = 100 - ev_sut_yuzde;
+                    let totalSut = <?= $ev_sut + $dep_sut ?>;
+                    let ev_sut_yuzde = totalSut > 0 ? (<?= $ev_sut ?> / totalSut) * 100 : 50;
+                    let dep_sut_yuzde = totalSut > 0 ? 100 - ev_sut_yuzde : 50;
                     document.getElementById('bar_ev_sut').style.width = ev_sut_yuzde + "%";
                     document.getElementById('bar_dep_sut').style.width = dep_sut_yuzde + "%";
                 }, 1500);

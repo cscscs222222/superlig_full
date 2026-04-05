@@ -17,18 +17,29 @@ class MatchEngine {
     public function gercekci_skor_hesapla($ev_id, $dep_id, $mac_bilgisi = null) {
         $tbl_oyuncular = $this->prefix . 'oyuncular';
         $tbl_takimlar = $this->prefix . 'takimlar';
-        
+
         // 1. Sahadaki ilk 11'in form ve yorgunluğa göre anlık ortalamasını al
-        $ev_ort = $this->pdo->query("SELECT AVG(ovr + (form-5) + ((fitness-100)*0.1)) FROM $tbl_oyuncular WHERE takim_id={$ev_id} AND ilk_11=1")->fetchColumn();
-        $dep_ort = $this->pdo->query("SELECT AVG(ovr + (form-5) + ((fitness-100)*0.1)) FROM $tbl_oyuncular WHERE takim_id={$dep_id} AND ilk_11=1")->fetchColumn();
-        
+        $stmt = $this->pdo->prepare("SELECT AVG(ovr + (form-5) + ((fitness-100)*0.1)) FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1");
+        $stmt->execute([$ev_id]);
+        $ev_ort = $stmt->fetchColumn();
+        $stmt->execute([$dep_id]);
+        $dep_ort = $stmt->fetchColumn();
+
         // 2. Takımların veritabanındaki sabit hücum/savunma güçlerini al (Hata vermemesi için motor kendi bulur)
-        $ev_takim = $this->pdo->query("SELECT hucum, savunma FROM $tbl_takimlar WHERE id={$ev_id}")->fetch(PDO::FETCH_ASSOC);
-        $dep_takim = $this->pdo->query("SELECT hucum, savunma FROM $tbl_takimlar WHERE id={$dep_id}")->fetch(PDO::FETCH_ASSOC);
-        
+        $stmt2 = $this->pdo->prepare("SELECT hucum, savunma FROM $tbl_takimlar WHERE id=?");
+        $stmt2->execute([$ev_id]);
+        $ev_takim = $stmt2->fetch(PDO::FETCH_ASSOC);
+        $stmt2->execute([$dep_id]);
+        $dep_takim = $stmt2->fetch(PDO::FETCH_ASSOC);
+
+        // Yeni/eksik liglerde takım kaydı olmayabilir; varsayılan güç 70 kullan
+        $ev_takim_guc  = ($ev_takim  && isset($ev_takim['hucum']))  ? (($ev_takim['hucum']  + $ev_takim['savunma'])  / 2) : 70;
+        $dep_takim_guc = ($dep_takim && isset($dep_takim['hucum'])) ? (($dep_takim['hucum'] + $dep_takim['savunma']) / 2) : 70;
+
         // 3. Nihai Gücü Hesapla
-        $ev_guc = ($ev_ort ?: (($ev_takim['hucum'] + $ev_takim['savunma']) / 2)) + 3; // Ev sahibi taraftar avantajı (+3)
-        $dep_guc = ($dep_ort ?: (($dep_takim['hucum'] + $dep_takim['savunma']) / 2));
+        // $ev_ort / $dep_ort NULL veya FALSE ise (oyuncu yok) takım ortalamasına dön; 0 değeri geçerlidir
+        $ev_guc  = ($ev_ort  !== null && $ev_ort  !== false ? (float)$ev_ort  : $ev_takim_guc)  + 3; // Ev sahibi taraftar avantajı (+3)
+        $dep_guc = ($dep_ort !== null && $dep_ort !== false ? (float)$dep_ort : $dep_takim_guc);
 
         // 4. xG Algoritması
         $guc_farki = $ev_guc - $dep_guc;
@@ -60,8 +71,10 @@ class MatchEngine {
         ];
 
         foreach($takimlar as $t) {
-            $oyuncular = $this->pdo->query("SELECT * FROM $tbl WHERE takim_id = {$t['id']} AND ilk_11 = 1")->fetchAll(PDO::FETCH_ASSOC);
-            
+            $oyuncular = $this->pdo->prepare("SELECT * FROM $tbl WHERE takim_id = ? AND ilk_11 = 1");
+            $oyuncular->execute([$t['id']]);
+            $oyuncular = $oyuncular->fetchAll(PDO::FETCH_ASSOC);
+
             foreach($oyuncular as $o) {
                 $yorgunluk = ($o['yas'] >= 32) ? rand(15, 22) : rand(8, 15);
                 $yeni_fitness = max(30, $o['fitness'] - $yorgunluk);
@@ -88,10 +101,12 @@ class MatchEngine {
                     }
                 }
 
-                $this->pdo->exec("UPDATE $tbl SET fitness=$yeni_fitness, form=$yeni_form, ovr=$yeni_ovr, fiyat=$yeni_fiyat WHERE id={$o['id']}");
+                $stmt = $this->pdo->prepare("UPDATE $tbl SET fitness=?, form=?, ovr=?, fiyat=? WHERE id=?");
+                $stmt->execute([$yeni_fitness, $yeni_form, $yeni_ovr, $yeni_fiyat, $o['id']]);
             }
             // Yedekleri dinlendir
-            $this->pdo->exec("UPDATE $tbl SET fitness = LEAST(100, fitness + 20) WHERE takim_id = {$t['id']} AND ilk_11 = 0");
+            $stmt2 = $this->pdo->prepare("UPDATE $tbl SET fitness = LEAST(100, fitness + 20) WHERE takim_id = ? AND ilk_11 = 0");
+            $stmt2->execute([$t['id']]);
         }
     }
 
@@ -99,8 +114,14 @@ class MatchEngine {
     public function mac_olay_uret($takim_id, $skor) {
         $tbl_oyuncular = $this->prefix . 'oyuncular';
 
-        $oyuncular = $this->pdo->query("SELECT isim, mevki FROM $tbl_oyuncular WHERE takim_id=$takim_id AND ilk_11=1")->fetchAll(PDO::FETCH_ASSOC);
-        if(!$oyuncular || count($oyuncular) == 0) { $oyuncular = $this->pdo->query("SELECT isim, mevki FROM $tbl_oyuncular WHERE takim_id=$takim_id")->fetchAll(PDO::FETCH_ASSOC); }
+        $oyuncular = $this->pdo->prepare("SELECT isim, mevki FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1");
+        $oyuncular->execute([$takim_id]);
+        $oyuncular = $oyuncular->fetchAll(PDO::FETCH_ASSOC);
+        if(!$oyuncular || count($oyuncular) == 0) {
+            $stmt_all = $this->pdo->prepare("SELECT isim, mevki FROM $tbl_oyuncular WHERE takim_id=?");
+            $stmt_all->execute([$takim_id]);
+            $oyuncular = $stmt_all->fetchAll(PDO::FETCH_ASSOC);
+        }
         if(!$oyuncular || count($oyuncular) == 0) { $oyuncular = [['isim' => 'Altyapı (AI)', 'mevki' => 'F']]; }
         
         $golculer = [];

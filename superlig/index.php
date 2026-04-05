@@ -108,6 +108,11 @@ include 'db.php';
         .mode-card.pl::before { background-image: url('https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?q=80&w=800'); }
         .mode-card.cl::before { background-image: url('https://images.unsplash.com/photo-1556816214-cb3ce168c076?q=80&w=800'); }
         .mode-card.gl::before { background-image: url('https://images.unsplash.com/photo-1522778526097-ce0a22ceb253?q=80&w=800'); }
+        .mode-card.es::before { background-image: url('https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=800'); }
+        .mode-card.de::before { background-image: url('https://images.unsplash.com/photo-1551958219-acbc595d0b17?q=80&w=800'); }
+        .mode-card.fr::before { background-image: url('https://images.unsplash.com/photo-1508344928928-7137b29de216?q=80&w=800'); }
+        .mode-card.it::before { background-image: url('https://images.unsplash.com/photo-1516382799247-87df95d790b7?q=80&w=800'); }
+        .mode-card.pt::before { background-image: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=800'); }
 
         /* Kart Rengi Glow Efektleri (Hover) */
         .mode-card:hover {
@@ -121,6 +126,11 @@ include 'db.php';
         .mode-card.pl:hover { box-shadow: 0 20px 50px rgba(0, 255, 133, 0.4); border-color: rgba(0, 255, 133, 0.5); }
         .mode-card.cl:hover { box-shadow: 0 20px 50px rgba(0, 229, 255, 0.4); border-color: rgba(0, 229, 255, 0.5); }
         .mode-card.gl:hover { box-shadow: 0 20px 50px rgba(212, 175, 55, 0.4); border-color: rgba(212, 175, 55, 0.5); }
+        .mode-card.es:hover { box-shadow: 0 20px 50px rgba(245, 158, 11, 0.4); border-color: rgba(245, 158, 11, 0.5); }
+        .mode-card.de:hover { box-shadow: 0 20px 50px rgba(217, 119, 6, 0.4);  border-color: rgba(217, 119, 6, 0.5); }
+        .mode-card.fr:hover { box-shadow: 0 20px 50px rgba(59, 130, 246, 0.4); border-color: rgba(59, 130, 246, 0.5); }
+        .mode-card.it:hover { box-shadow: 0 20px 50px rgba(16, 185, 129, 0.4); border-color: rgba(16, 185, 129, 0.5); }
+        .mode-card.pt:hover { box-shadow: 0 20px 50px rgba(139, 92, 246, 0.4); border-color: rgba(139, 92, 246, 0.5); }
 
         /* Kart İçi İçerik (Metinler) */
         .card-content { position: relative; z-index: 2; transition: 0.3s; }
@@ -132,6 +142,11 @@ include 'db.php';
         .mode-card.pl .card-icon { color: #00ff85; }
         .mode-card.cl .card-icon { color: #00e5ff; }
         .mode-card.gl .card-icon { color: #d4af37; }
+        .mode-card.es .card-icon { color: #f59e0b; }
+        .mode-card.de .card-icon { color: #d97706; }
+        .mode-card.fr .card-icon { color: #3b82f6; }
+        .mode-card.it .card-icon { color: #10b981; }
+        .mode-card.pt .card-icon { color: #8b5cf6; }
 
         .mode-card:hover .card-icon { opacity: 1; transform: scale(1.1) rotate(5deg); }
 
@@ -145,6 +160,15 @@ include 'db.php';
 
         /* Alt Futbol Bilgisi */
         .footer-note { text-align: center; margin-top: 60px; color: rgba(255,255,255,0.3); font-size: 0.85rem; letter-spacing: 1px; padding-bottom: 20px; }
+
+        /* Yakında Gelecek Rozeti */
+        .coming-soon-badge {
+            position: absolute; top: 15px; right: 15px; z-index: 3;
+            background: rgba(0,0,0,0.7); color: rgba(255,255,255,0.6);
+            font-size: 0.65rem; font-weight: 800; padding: 4px 10px;
+            border-radius: 20px; border: 1px solid rgba(255,255,255,0.2);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
 
     </style>
 </head>
@@ -199,6 +223,51 @@ include 'db.php';
                     <div class="card-desc">Tüm dünya yıldızlarını tara ve kulübüne transfer et.</div>
                 </div>
             </a>
+
+            <div class="mode-card es" style="cursor: not-allowed; opacity: 0.7;">
+                <span class="coming-soon-badge">Yakında</span>
+                <div class="card-content">
+                    <div class="card-icon"><i class="fa-solid fa-sun"></i></div>
+                    <h2 class="card-title">LA LIGA</h2>
+                    <div class="card-desc">İspanya'nın zirvesine ulaş. Klasik derbiler seni bekliyor.</div>
+                </div>
+            </div>
+
+            <div class="mode-card de" style="cursor: not-allowed; opacity: 0.7;">
+                <span class="coming-soon-badge">Yakında</span>
+                <div class="card-content">
+                    <div class="card-icon"><i class="fa-solid fa-bolt"></i></div>
+                    <h2 class="card-title">BUNDESLIGA</h2>
+                    <div class="card-desc">Alman futbolunun gücü ve disiplini ile şampiyonluğa yürü.</div>
+                </div>
+            </div>
+
+            <div class="mode-card fr" style="cursor: not-allowed; opacity: 0.7;">
+                <span class="coming-soon-badge">Yakında</span>
+                <div class="card-content">
+                    <div class="card-icon"><i class="fa-solid fa-tower-observation"></i></div>
+                    <h2 class="card-title">LIGUE 1</h2>
+                    <div class="card-desc">Fransa'nın elit sahalarında stil ve zarafeti birleştir.</div>
+                </div>
+            </div>
+
+            <div class="mode-card it" style="cursor: not-allowed; opacity: 0.7;">
+                <span class="coming-soon-badge">Yakında</span>
+                <div class="card-content">
+                    <div class="card-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h2 class="card-title">SERIE A</h2>
+                    <div class="card-desc">İtalya'nın taktiksel derin futbolunda bir efsane ol.</div>
+                </div>
+            </div>
+
+            <div class="mode-card pt" style="cursor: not-allowed; opacity: 0.7;">
+                <span class="coming-soon-badge">Yakında</span>
+                <div class="card-content">
+                    <div class="card-icon"><i class="fa-solid fa-star"></i></div>
+                    <h2 class="card-title">LIGA NOS</h2>
+                    <div class="card-desc">Portekiz'in yeteneğini keşfet ve Avrupa'ya taşı.</div>
+                </div>
+            </div>
 
         </div>
     </div>
