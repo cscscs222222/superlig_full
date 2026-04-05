@@ -13,7 +13,7 @@ $prefix = "";
 $geridon_link = "superlig/super_lig/superlig.php"; 
 if($lig_kodu == 'pl') { $prefix = "pl_"; $geridon_link = "superlig/premier_lig/premier_lig.php"; }
 elseif($lig_kodu == 'cl') { $prefix = "cl_"; $geridon_link = "superlig/champions_league/cl.php"; }
-elseif($lig_kodu == 'es') { $prefix = "es_"; $geridon_link = "index.php"; } 
+elseif($lig_kodu == 'es') { $prefix = "es_"; $geridon_link = "superlig/la_liga/la_liga.php"; } 
 elseif($lig_kodu == 'de') { $prefix = "de_"; $geridon_link = "index.php"; }
 elseif($lig_kodu == 'fr') { $prefix = "fr_"; $geridon_link = "index.php"; }
 elseif($lig_kodu == 'it') { $prefix = "it_"; $geridon_link = "index.php"; }

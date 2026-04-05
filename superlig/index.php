@@ -224,14 +224,13 @@ include 'db.php';
                 </div>
             </a>
 
-            <div class="mode-card es" style="cursor: not-allowed; opacity: 0.7;">
-                <span class="coming-soon-badge">Yakında</span>
+            <a href="la_liga/la_liga.php" class="mode-card es">
                 <div class="card-content">
                     <div class="card-icon"><i class="fa-solid fa-sun"></i></div>
                     <h2 class="card-title">LA LIGA</h2>
                     <div class="card-desc">İspanya'nın zirvesine ulaş. Klasik derbiler seni bekliyor.</div>
                 </div>
-            </div>
+            </a>
 
             <div class="mode-card de" style="cursor: not-allowed; opacity: 0.7;">
                 <span class="coming-soon-badge">Yakında</span>
