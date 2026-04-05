@@ -84,7 +84,7 @@ if(isset($_POST['genc_cikar'])) {
         
         if(rand(1,100) <= 5) {
             $ovr += rand(6, 12);
-            $mesaj_ek = " DEUTSCHES TALENT ENTDECKT! (Deutsches Talent Entdeckt!)";
+            $mesaj_ek = " DEUTSCHES TALENT ENTDECKT!";
         } else {
             $mesaj_ek = "";
         }
