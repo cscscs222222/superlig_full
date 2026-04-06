@@ -358,11 +358,71 @@ include 'db.php';
                 </div>
             </div>
 
+            <!-- FAZ 1: AVRUPA LİGİ -->
+            <a href="uel/uel.php" class="mode-card" style="--card-color:#f04e23;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/3/35/UEFA_Europa_League_logo_%282.0%29.svg/200px-UEFA_Europa_League_logo_%282.0%29.svg.png"
+                             alt="Europa League Logo"
+                             onerror="logoFallback(this,'fa-solid fa-fire','#f04e23')">
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">EUROPA LEAGUE</h2>
+                    <div class="card-desc">5. ve 6. sıra takımların Perşembe gecesi yarışması.</div>
+                    <div class="card-cta" style="color:#f04e23;"><i class="fa-solid fa-play"></i> OYNA</div>
+                </div>
+            </a>
+
+            <!-- FAZ 1: KONFERANS LİGİ -->
+            <a href="uecl/uecl.php" class="mode-card" style="--card-color:#2ecc71;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/4/45/UEFA_Europa_Conference_League_logo.svg/200px-UEFA_Europa_Conference_League_logo.svg.png"
+                             alt="Conference League Logo"
+                             onerror="logoFallback(this,'fa-solid fa-earth-europe','#2ecc71')">
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">CONFERENCE LEAGUE</h2>
+                    <div class="card-desc">7. ve 8. sıraların Avrupa serüveni başlıyor.</div>
+                    <div class="card-cta" style="color:#2ecc71;"><i class="fa-solid fa-play"></i> OYNA</div>
+                </div>
+            </a>
+
+            <!-- FAZ 1: UEFA SÜPER KUPA -->
+            <a href="super_cup/super_cup.php" class="mode-card gl">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-trophy" style="font-size:3rem; color:#d4af37;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">SÜPER KUPA</h2>
+                    <div class="card-desc">UCL şampiyonu × UEL şampiyonu — Sezonun açılış maçı!</div>
+                    <div class="card-cta"><i class="fa-solid fa-play"></i> OYNA</div>
+                </div>
+            </a>
+
+            <!-- FAZ 1: GLOBAL TAKVİM -->
+            <a href="takvim.php" class="mode-card" style="--card-color:#94a3b8;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-calendar-days" style="font-size:2.8rem; color:#94a3b8;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">GLOBAL TAKVİM</h2>
+                    <div class="card-desc">Tüm liglerin ve Avrupa kupalarının haftalık özeti.</div>
+                    <div class="card-cta" style="color:#94a3b8;"><i class="fa-solid fa-arrow-right"></i> GİT</div>
+                </div>
+            </a>
+
         </div>
     </div>
 
     <div class="footer-note font-oswald">
-        V1.0.0 CORE ENGINE • BÜTÜN LİGLER AKTİF • TRANSFER DÖNEMİ AÇIK
+        V2.0.0 PHASE 1 — UEFA EKOSİSTEMİ AKTİF • UCL / UEL / UECL / SÜPER KUPA
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
