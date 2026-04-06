@@ -70,15 +70,45 @@ if(isset($_POST['yeni_sezona_gec'])) {
         }
     }
 
-    // 2. OYUNCULARI YAŞLANDIR VE DURUMLARI SIFIRLA
+    // 2. TOURNAMENTS TABLOSUNA UCL ŞAMPİYONUNU KAYDET (Super Cup için)
+    if ($sampiyon) {
+        try {
+            $pdo->exec("CREATE TABLE IF NOT EXISTS tournaments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                turnuva VARCHAR(50),
+                sezon_yil INT,
+                sampiyon_id INT DEFAULT NULL,
+                sampiyon_adi VARCHAR(100) DEFAULT NULL,
+                sampiyon_lig VARCHAR(50) DEFAULT NULL,
+                UNIQUE KEY uniq_turnuva_sezon (turnuva, sezon_yil)
+            )");
+            $stmt = $pdo->prepare("INSERT INTO tournaments (turnuva, sezon_yil, sampiyon_id, sampiyon_adi, sampiyon_lig) VALUES ('UCL', ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE sampiyon_id=VALUES(sampiyon_id), sampiyon_adi=VALUES(sampiyon_adi), sampiyon_lig=VALUES(sampiyon_lig)");
+            $stmt->execute([$guncel_sezon, $sampiyon['id'], $sampiyon['takim_adi'], $sampiyon['lig'] ?? 'Avrupa']);
+        } catch(Throwable $e) {}
+    }
+
+    // 3. UCL ŞAMPİYONUNUN ÜLKESİNE EKSTRA UEFA KATSAYISI
+    if ($sampiyon && !empty($sampiyon['lig'])) {
+        $ulke_map = ['Süper Lig'=>'Türkiye','Premier Lig'=>'İngiltere','La Liga'=>'İspanya','Bundesliga'=>'Almanya','Serie A'=>'İtalya'];
+        $ulke = $ulke_map[$sampiyon['lig']] ?? null;
+        if ($ulke) {
+            try {
+                $pdo->exec("UPDATE uefa_coefficients SET toplam_puan = toplam_puan + 5.0, sezon_puan = sezon_puan + 5.0 WHERE ulke_adi = '$ulke'");
+                $pdo->exec("UPDATE uefa_siralamasi SET toplam_puan = toplam_puan + 5000, guncel_sezon_puan = guncel_sezon_puan + 5000 WHERE ulke_adi = '$ulke'");
+            } catch(Throwable $e) {}
+        }
+    }
+
+    // 4. OYUNCULARI YAŞLANDIR VE DURUMLARI SIFIRLA
     $pdo->exec("UPDATE cl_oyuncular SET yas = yas + 1, form = 6, fitness = 100, ceza_hafta = 0, sakatlik_hafta = 0");
     $pdo->exec("DELETE FROM cl_oyuncular WHERE yas >= 38"); // 38 yaşında emeklilik
 
-    // 3. İSTATİSTİKLERİ VE FİKSTÜRÜ SIFIRLA
+    // 5. İSTATİSTİKLERİ VE FİKSTÜRÜ SIFIRLA
     $pdo->exec("UPDATE cl_takimlar SET puan = 0, galibiyet = 0, beraberlik = 0, malubiyet = 0, atilan_gol = 0, yenilen_gol = 0");
     $pdo->exec("TRUNCATE TABLE cl_maclar"); 
     
-    // 4. YILI VE HAFTAYI İLERLET
+    // 6. YILI VE HAFTAYI İLERLET
     $yeni_sezon_yili = $guncel_sezon + 1;
     $pdo->exec("UPDATE cl_ayar SET hafta = 1, sezon_yil = $yeni_sezon_yili");
     

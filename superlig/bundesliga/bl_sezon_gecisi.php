@@ -50,15 +50,51 @@ if(isset($_POST['yeni_sezona_gec'])) {
         }
     }
 
-    // 3. OYUNCULARI YAŞLANDIR VE DURUMLARI SIFIRLA
+    // 3. AVRUPA LİGİ (UEL) - 5. ve 6. Sıralar
+    foreach ([$puan_durumu[4] ?? null, $puan_durumu[5] ?? null] as $uel_takim) {
+        if (!$uel_takim) continue;
+        try {
+            $var_mi = $pdo->query("SELECT id FROM uel_takimlar WHERE takim_adi = '" . addslashes($uel_takim['takim_adi']) . "'")->fetchColumn();
+            if (!$var_mi) {
+                $stmt = $pdo->prepare("INSERT INTO uel_takimlar (takim_adi, logo, hucum, savunma, butce, lig) VALUES (?, ?, ?, ?, ?, 'Bundesliga')");
+                $stmt->execute([$uel_takim['takim_adi'], $uel_takim['logo'], $uel_takim['hucum'], $uel_takim['savunma'], 18000000]);
+                $yeni_uel_id = $pdo->lastInsertId();
+                $oyuncular_uel = $pdo->query("SELECT * FROM de_oyuncular WHERE takim_id = {$uel_takim['id']}")->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($oyuncular_uel as $o) {
+                    $stmt_o = $pdo->prepare("INSERT INTO uel_oyuncular (takim_id, isim, mevki, ovr, yas, fiyat, lig, ilk_11, yedek) VALUES (?, ?, ?, ?, ?, ?, 'Bundesliga', ?, ?)");
+                    $stmt_o->execute([$yeni_uel_id, $o['isim'], $o['mevki'], $o['ovr'] ?? 70, $o['yas'] ?? 25, $o['fiyat'] ?? 5000000, $o['ilk_11'] ?? 0, $o['yedek'] ?? 0]);
+                }
+            }
+        } catch(Throwable $e) {}
+    }
+
+    // 4. KONFERANS LİGİ (UECL) - 7. ve 8. Sıralar
+    foreach ([$puan_durumu[6] ?? null, $puan_durumu[7] ?? null] as $uecl_takim) {
+        if (!$uecl_takim) continue;
+        try {
+            $var_mi = $pdo->query("SELECT id FROM uecl_takimlar WHERE takim_adi = '" . addslashes($uecl_takim['takim_adi']) . "'")->fetchColumn();
+            if (!$var_mi) {
+                $stmt = $pdo->prepare("INSERT INTO uecl_takimlar (takim_adi, logo, hucum, savunma, butce, lig) VALUES (?, ?, ?, ?, ?, 'Bundesliga')");
+                $stmt->execute([$uecl_takim['takim_adi'], $uecl_takim['logo'], $uecl_takim['hucum'], $uecl_takim['savunma'], 10000000]);
+                $yeni_uecl_id = $pdo->lastInsertId();
+                $oyuncular_uecl = $pdo->query("SELECT * FROM de_oyuncular WHERE takim_id = {$uecl_takim['id']}")->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($oyuncular_uecl as $o) {
+                    $stmt_o = $pdo->prepare("INSERT INTO uecl_oyuncular (takim_id, isim, mevki, ovr, yas, fiyat, lig, ilk_11, yedek) VALUES (?, ?, ?, ?, ?, ?, 'Bundesliga', ?, ?)");
+                    $stmt_o->execute([$yeni_uecl_id, $o['isim'], $o['mevki'], $o['ovr'] ?? 70, $o['yas'] ?? 25, $o['fiyat'] ?? 5000000, $o['ilk_11'] ?? 0, $o['yedek'] ?? 0]);
+                }
+            }
+        } catch(Throwable $e) {}
+    }
+
+    // 5. OYUNCULARI YAŞLANDIR VE DURUMLARI SIFIRLA
     $pdo->exec("UPDATE de_oyuncular SET yas = yas + 1, form = 6, fitness = 100, ceza_hafta = 0, sakatlik_hafta = 0");
     $pdo->exec("DELETE FROM de_oyuncular WHERE yas >= 38");
 
-    // 4. İSTATİSTİKLERİ VE FİKSTÜRÜ SIFIRLA
+    // 6. İSTATİSTİKLERİ VE FİKSTÜRÜ SIFIRLA
     $pdo->exec("UPDATE de_takimlar SET puan = 0, galibiyet = 0, beraberlik = 0, malubiyet = 0, atilan_gol = 0, yenilen_gol = 0");
     $pdo->exec("TRUNCATE TABLE de_maclar"); 
     
-    // 5. YILI VE HAFTAYI İLERLET
+    // 7. YILI VE HAFTAYI İLERLET
     $yeni_sezon_yili = $guncel_sezon + 1;
     $pdo->exec("UPDATE de_ayar SET hafta = 1, sezon_yil = $yeni_sezon_yili");
     
