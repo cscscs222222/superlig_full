@@ -166,6 +166,7 @@ include 'db.php';
         .mode-card.gl:hover .card-logo-bg { box-shadow: 0 0 30px rgba(212,175,55,0.5), 0 8px 32px rgba(0,0,0,0.4); border-color: rgba(212,175,55,0.5); }
         .mode-card.es:hover .card-logo-bg { box-shadow: 0 0 30px rgba(245,158,11,0.5), 0 8px 32px rgba(0,0,0,0.4); border-color: rgba(245,158,11,0.5); }
         .mode-card.de:hover .card-logo-bg { box-shadow: 0 0 30px rgba(229,57,53,0.5), 0 8px 32px rgba(0,0,0,0.4); border-color: rgba(229,57,53,0.5); }
+        .mode-card.it:hover .card-logo-bg { box-shadow: 0 0 30px rgba(16,185,129,0.5), 0 8px 32px rgba(0,0,0,0.4); border-color: rgba(16,185,129,0.5); }
 
         /* Kart İçi İçerik (Metinler) */
         .card-content { position: relative; z-index: 2; transition: 0.3s; }
@@ -190,6 +191,7 @@ include 'db.php';
         .mode-card.gl .card-cta { color: #d4af37; }
         .mode-card.es .card-cta { color: #f59e0b; }
         .mode-card.de .card-cta { color: #ef4444; }
+        .mode-card.it .card-cta { color: #10b981; }
 
         /* Alt Futbol Bilgisi */
         .footer-note { text-align: center; margin-top: 60px; color: rgba(255,255,255,0.3); font-size: 0.85rem; letter-spacing: 1px; padding-bottom: 20px; }
@@ -328,8 +330,7 @@ include 'db.php';
                 </div>
             </div>
 
-            <div class="mode-card it" style="cursor: not-allowed; opacity: 0.65;">
-                <span class="coming-soon-badge">Yakında</span>
+            <a href="serie_a/serie_a.php" class="mode-card it">
                 <div class="card-logo-wrapper">
                     <div class="card-logo-bg">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Serie_A_logo_2022.svg/200px-Serie_A_logo_2022.svg.png"
@@ -340,8 +341,9 @@ include 'db.php';
                 <div class="card-content">
                     <h2 class="card-title">SERIE A</h2>
                     <div class="card-desc">İtalya'nın taktiksel derin futbolunda bir efsane ol.</div>
+                    <div class="card-cta"><i class="fa-solid fa-play"></i> OYNA</div>
                 </div>
-            </div>
+            </a>
 
             <div class="mode-card pt" style="cursor: not-allowed; opacity: 0.65;">
                 <span class="coming-soon-badge">Yakında</span>
