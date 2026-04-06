@@ -43,8 +43,12 @@ if (isset($_POST['action']) && $_POST['action'] === 'taktik_degistir') {
         if ($cikan_id > 0 && $giren_id > 0 && $cikan_id !== $giren_id) {
             $pdo->prepare("UPDATE $tbl_oyuncular SET ilk_11=0, yedek=1 WHERE id=? LIMIT 1")->execute([$cikan_id]);
             $pdo->prepare("UPDATE $tbl_oyuncular SET ilk_11=1, yedek=0 WHERE id=? LIMIT 1")->execute([$giren_id]);
-            $cikan_isim = $pdo->query("SELECT isim FROM $tbl_oyuncular WHERE id=$cikan_id LIMIT 1")->fetchColumn();
-            $giren_isim = $pdo->query("SELECT isim FROM $tbl_oyuncular WHERE id=$giren_id LIMIT 1")->fetchColumn();
+            $cikan_isim = $pdo->prepare("SELECT isim FROM $tbl_oyuncular WHERE id=? LIMIT 1");
+            $cikan_isim->execute([$cikan_id]);
+            $cikan_isim = $cikan_isim->fetchColumn();
+            $giren_isim = $pdo->prepare("SELECT isim FROM $tbl_oyuncular WHERE id=? LIMIT 1");
+            $giren_isim->execute([$giren_id]);
+            $giren_isim = $giren_isim->fetchColumn();
             $sub_mesaj = ($cikan_isim ?: '?') . ' → ' . ($giren_isim ?: '?');
         }
         echo json_encode(['ok' => true, 'dizilis' => $yeni_dizilis, 'sub' => $sub_mesaj]);
@@ -147,8 +151,11 @@ $dep_kurtaris = (int)($mac['dep_kurtaris'] ?? 0); // dep kalecisinin kurtarışl
 $ev_kaleci_isim  = '';
 $dep_kaleci_isim = '';
 try {
-    $ev_kaleci_isim  = $pdo->query("SELECT isim FROM $tbl_oyuncular WHERE takim_id={$mac['ev']}  AND mevki='K' ORDER BY kurtaris DESC LIMIT 1")->fetchColumn() ?: '';
-    $dep_kaleci_isim = $pdo->query("SELECT isim FROM $tbl_oyuncular WHERE takim_id={$mac['dep']} AND mevki='K' ORDER BY kurtaris DESC LIMIT 1")->fetchColumn() ?: '';
+    $stmt_k = $pdo->prepare("SELECT isim FROM $tbl_oyuncular WHERE takim_id=? AND mevki='K' ORDER BY kurtaris DESC LIMIT 1");
+    $stmt_k->execute([$mac['ev']]);
+    $ev_kaleci_isim  = $stmt_k->fetchColumn() ?: '';
+    $stmt_k->execute([$mac['dep']]);
+    $dep_kaleci_isim = $stmt_k->fetchColumn() ?: '';
 } catch (Throwable $e) {}
 
 // --- FAZ 2: VAR OLAYLARI ---
@@ -174,17 +181,21 @@ try {
         elseif ($kullanici_takim_id == $mac['dep'])  $kullanici_takim_kim = 'dep';
 
         if ($kullanici_takim_kim) {
-            $yedek_oyuncular = $pdo->query(
+            $stmt_yedek = $pdo->prepare(
                 "SELECT id, isim, mevki, ovr FROM $tbl_oyuncular
-                 WHERE takim_id=$kullanici_takim_id AND yedek=1
+                 WHERE takim_id=? AND yedek=1
                  ORDER BY ovr DESC LIMIT 8"
-            )->fetchAll(PDO::FETCH_ASSOC);
+            );
+            $stmt_yedek->execute([$kullanici_takim_id]);
+            $yedek_oyuncular = $stmt_yedek->fetchAll(PDO::FETCH_ASSOC);
 
-            $ilk11_oyuncular = $pdo->query(
+            $stmt_ilk11 = $pdo->prepare(
                 "SELECT id, isim, mevki, ovr FROM $tbl_oyuncular
-                 WHERE takim_id=$kullanici_takim_id AND ilk_11=1
+                 WHERE takim_id=? AND ilk_11=1
                  ORDER BY CASE mevki WHEN 'K' THEN 1 WHEN 'D' THEN 2 WHEN 'OS' THEN 3 WHEN 'F' THEN 4 END, ovr DESC"
-            )->fetchAll(PDO::FETCH_ASSOC);
+            );
+            $stmt_ilk11->execute([$kullanici_takim_id]);
+            $ilk11_oyuncular = $stmt_ilk11->fetchAll(PDO::FETCH_ASSOC);
         }
     }
 } catch (Throwable $e) {}
@@ -574,7 +585,7 @@ elseif ($hava_durumu === 'Karlı') { $hava_icon = '❄️'; $hava_renk = '#e0f2f
                         </select>
                     </div>
                 </div>
-                <button class="btn-tactics-apply" onclick="uygulaDeğişiklik()">✅ UYGULA</button>
+                <button class="btn-tactics-apply" onclick="uygulaIstek()">✅ UYGULA</button>
                 <div id="sub_sonuc" style="margin-top:8px; font-size:0.85rem; color:#22c55e; display:none;"></div>
             </div>
             <?php endif; ?>
@@ -771,7 +782,7 @@ elseif ($hava_durumu === 'Karlı') { $hava_icon = '❄️'; $hava_renk = '#e0f2f
             btn.classList.add('active');
         }
 
-        function uygulaDeğişiklik() {
+        function uygulaIstek() {
             const cikanId = document.getElementById('cikan_oyuncu')?.value;
             const girenId = document.getElementById('giren_oyuncu')?.value;
 
