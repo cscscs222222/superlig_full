@@ -100,14 +100,14 @@ try {
         toplam_puan DECIMAL(10,3) DEFAULT 0,
         sezon_puan DECIMAL(10,3) DEFAULT 0,
         ucl_kota INT DEFAULT 2,
-        uecl_kota INT DEFAULT 2,
+        uel_kota INT DEFAULT 2,
         uecl_kota INT DEFAULT 1
     )");
 
     // Başlangıç katsayıları (UEFA 2024-25 verileri baz alınarak)
     $count = $pdo->query("SELECT COUNT(*) FROM uefa_coefficients")->fetchColumn();
     if ($count == 0) {
-        $pdo->exec("INSERT INTO uefa_coefficients (ulke_adi, toplam_puan, ucl_kota, uecl_kota, uecl_kota) VALUES
+        $pdo->exec("INSERT INTO uefa_coefficients (ulke_adi, toplam_puan, ucl_kota, uel_kota, uecl_kota) VALUES
             ('İngiltere', 103.160, 4, 2, 1),
             ('İspanya',   96.231, 4, 2, 1),
             ('Almanya',   82.946, 4, 2, 1),
@@ -133,7 +133,7 @@ sutunEkleUecl($pdo, 'uecl_oyuncular', 'lig', "VARCHAR(50) DEFAULT 'Avrupa'");
 function uecl_ulke_puani_ekle($pdo, $takim_id, $puan) {
     try {
         $lig = $pdo->query("SELECT lig FROM uecl_takimlar WHERE id = " . (int)$takim_id)->fetchColumn();
-        $ulke = uecl_ulke_bul($lig);
+        $ulke = uecl_uecl_ulke_bul($lig);
         if ($ulke) {
             $pdo->exec("UPDATE uefa_coefficients SET toplam_puan = toplam_puan + $puan, sezon_puan = sezon_puan + $puan WHERE ulke_adi = '$ulke'");
             $pdo->exec("UPDATE uefa_siralamasi SET toplam_puan = toplam_puan + " . (int)($puan * 1000) . ", guncel_sezon_puan = guncel_sezon_puan + " . (int)($puan * 1000) . " WHERE ulke_adi = '$ulke'");

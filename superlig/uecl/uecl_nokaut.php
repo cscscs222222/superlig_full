@@ -5,12 +5,12 @@
 include '../db.php';
 require_once '../MatchEngine.php';
 $engine = new MatchEngine($pdo, 'uecl_');
-$ayar = $pdo->query("SELECT * FROM ueuecl_ayar LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$ayar = $pdo->query("SELECT * FROM uecl_ayar LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $hafta = (int)$ayar['hafta'];
 $sezon_yili = (int)($ayar['sezon_yil'] ?? 2025);
 $kullanici_takim_id = (int)($ayar['kullanici_takim_id'] ?? 0);
 
-if ($hafta <= 8) { header("Location: ueuecl.php"); exit; }
+if ($hafta <= 8) { header("Location: uecl.php"); exit; }
 
 function mac_var_mi($pdo, $h, $sezon_yil) {
     $h = (int)$h; $sezon_yil = (int)$sezon_yil;
@@ -110,9 +110,9 @@ if(isset($_GET['simule'])) {
     }
     
     $kalan = $pdo->query("SELECT COUNT(*) FROM uecl_maclar WHERE hafta = $hafta AND sezon_yil = $sezon_yili AND ev_skor IS NULL")->fetchColumn();
-    if($kalan == 0) { $pdo->exec("UPDATE ueuecl_ayar SET hafta = hafta + 1"); }
+    if($kalan == 0) { $pdo->exec("UPDATE uecl_ayar SET hafta = hafta + 1"); }
     
-    header("Location: ueuecl_nokaut.php?asama=".($_GET['asama'] ?? 'po')); exit;
+    header("Location: uecl_nokaut.php?asama=".($_GET['asama'] ?? 'po')); exit;
 }
 
 // GÖRÜNÜM (SEKMELER) YÖNETİMİ
@@ -201,11 +201,11 @@ if ($hafta > 17) {
         
         .nav-tabs-custom { display: flex; justify-content: center; gap: 10px; margin-bottom: 30px; flex-wrap: wrap; }
         .tab-btn { background: rgba(15,23,42,0.8); border: 1px solid rgba(0,229,255,0.2); color: #94a3b8; padding: 12px 30px; border-radius: 8px; font-family: 'Oswald'; font-size: 1.1rem; text-decoration: none; transition: 0.3s; letter-spacing: 1px;}
-        .tab-btn:hover { background: rgba(0,229,255,0.1); color: #fff; border-color: ##2ecc71; }
-        .tab-btn.active { background: ##2ecc71; color: #000; font-weight: 800; border-color: ##2ecc71; box-shadow: 0 0 20px rgba(0,229,255,0.4); transform: translateY(-2px);}
+        .tab-btn:hover { background: rgba(0,229,255,0.1); color: #fff; border-color: #2ecc71; }
+        .tab-btn.active { background: #2ecc71; color: #000; font-weight: 800; border-color: #2ecc71; box-shadow: 0 0 20px rgba(0,229,255,0.4); transform: translateY(-2px);}
 
         .match-card { background: rgba(0,0,0,0.6); border: 1px solid rgba(0,229,255,0.15); border-radius: 12px; margin-bottom: 20px; overflow: hidden; transition: 0.3s;}
-        .match-card:hover { border-color: ##2ecc71; box-shadow: 0 5px 20px rgba(0,229,255,0.15); transform: translateY(-2px);}
+        .match-card:hover { border-color: #2ecc71; box-shadow: 0 5px 20px rgba(0,229,255,0.15); transform: translateY(-2px);}
         
         .score-grid { display: flex; width: 100%; min-height: 100px; align-items: stretch; padding: 15px;}
         
@@ -217,7 +217,7 @@ if ($hafta > 17) {
         
         .vs-box { width: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(180deg, #021a08, #082d10); border-radius: 8px; border: 1px solid rgba(0,229,255,0.3); box-shadow: inset 0 0 10px rgba(0,0,0,0.8); margin: 0 20px;}
         .match-score { font-family: 'Oswald'; font-size: 2.2rem; font-weight: 900; color: #ffffff; line-height: 1; text-shadow: 0 3px 5px rgba(0,0,0,0.9); }
-        .match-status { font-size: 0.8rem; color: ##2ecc71; font-weight: 800; letter-spacing: 2px; margin-top: 5px; }
+        .match-status { font-size: 0.8rem; color: #2ecc71; font-weight: 800; letter-spacing: 2px; margin-top: 5px; }
 
         .events-grid { display: flex; width: 100%; background: rgba(0,0,0,0.8); border-top: 1px solid rgba(0,229,255,0.1); padding: 15px 0; font-size: 0.9rem; }
         .event-col { display: flex; flex-direction: column; gap: 8px; padding: 0 20px; flex: 1;}
@@ -226,7 +226,7 @@ if ($hafta > 17) {
         .event-col.center { width: 120px; flex: none; }
         
         .event-item { display: flex; align-items: center; gap: 10px; font-weight: 600; color: #fff;}
-        .event-time { font-family: 'Oswald'; font-weight: 700; color: ##2ecc71;}
+        .event-time { font-family: 'Oswald'; font-weight: 700; color: #2ecc71;}
         .event-assist { color: #94a3b8; font-size: 0.8rem; font-style: italic;}
         
         .ref-card { width: 12px; height: 16px; border-radius: 2px; transform: rotate(5deg); box-shadow: 0 1px 4px rgba(0,0,0,0.8);}
@@ -238,27 +238,27 @@ if ($hafta > 17) {
 
     <!-- TOP NAV -->
     <nav style="background: rgba(5,11,20,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(0,229,255,0.2); padding: 0 2rem; height: 65px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000;">
-        <a href="ueuecl.php" style="color:##2ecc71; font-family:'Oswald',sans-serif; font-size:1.3rem; text-decoration:none; display:flex; align-items:center; gap:8px;">
+        <a href="uecl.php" style="color:#2ecc71; font-family:'Oswald',sans-serif; font-size:1.3rem; text-decoration:none; display:flex; align-items:center; gap:8px;">
             <i class="fa-solid fa-futbol"></i> CONFERENCE LEAGUE
         </a>
         <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
-            <a href="ueuecl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-house me-1"></i>Ana Sayfa</a>
-            <a href="ueuecl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-list-ol me-1"></i>Lig Aşaması</a>
-            <a href="ueuecl_nokaut.php?asama=po" class="tab-btn <?= $asama=='po' ? 'active' : '' ?>" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-shield-halved me-1"></i>Playoff</a>
-            <a href="ueuecl_nokaut.php" class="tab-btn active" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-bolt me-1"></i>Eleme Turları</a>
-            <a href="ueuecl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-table me-1"></i>Puan Tablosu</a>
-            <a href="ueuecl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-calendar-days me-1"></i>Fikstür / Maçlar</a>
-            <a href="ueuecl_puan.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-chart-bar me-1"></i>İstatistikler</a>
+            <a href="uecl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-house me-1"></i>Ana Sayfa</a>
+            <a href="uecl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-list-ol me-1"></i>Lig Aşaması</a>
+            <a href="uecl_nokaut.php?asama=po" class="tab-btn <?= $asama=='po' ? 'active' : '' ?>" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-shield-halved me-1"></i>Playoff</a>
+            <a href="uecl_nokaut.php" class="tab-btn active" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-bolt me-1"></i>Eleme Turları</a>
+            <a href="uecl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-table me-1"></i>Puan Tablosu</a>
+            <a href="uecl.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-calendar-days me-1"></i>Fikstür / Maçlar</a>
+            <a href="uecl_puan.php" class="tab-btn" style="padding:8px 14px; font-size:0.85rem;"><i class="fa-solid fa-chart-bar me-1"></i>İstatistikler</a>
         </div>
     </nav>
 
     <!-- HERO -->
     <div class="hero-banner">
         <div style="display:inline-block; background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.3); border-radius: 50px; padding: 6px 20px; margin-bottom: 16px;">
-            <span style="color:##2ecc71; font-size:0.85rem; font-weight:700; letter-spacing:3px;">UEFA CONFERENCE LEAGUE</span>
+            <span style="color:#2ecc71; font-size:0.85rem; font-weight:700; letter-spacing:3px;">UEFA CONFERENCE LEAGUE</span>
         </div>
         <h1 class="font-oswald" style="color: #ffffff; font-size: 3rem; text-shadow: 0 0 30px rgba(0,229,255,0.4); margin-bottom: 6px;">ROAD TO GLORY</h1>
-        <h3 style="color:##2ecc71; font-family:'Oswald',sans-serif; font-size:1.4rem; letter-spacing:2px;"><?= $asama_map[$asama]['ad'] ?></h3>
+        <h3 style="color:#2ecc71; font-family:'Oswald',sans-serif; font-size:1.4rem; letter-spacing:2px;"><?= $asama_map[$asama]['ad'] ?></h3>
         
         <!-- TOURNAMENT PROGRESS BAR -->
         <div style="display:flex; justify-content:center; gap:0; margin: 20px auto; max-width: 700px; background: rgba(255,255,255,0.03); border-radius: 8px; overflow:hidden; border: 1px solid rgba(0,229,255,0.1);">
@@ -271,8 +271,8 @@ if ($hafta > 17) {
                 $is_active = ($k == $asama);
                 $is_done = ($idx < $current_idx);
                 $bg = $is_active ? 'rgba(0,229,255,0.25)' : ($is_done ? 'rgba(0,229,255,0.08)' : 'transparent');
-                $color = $is_active ? '##2ecc71' : ($is_done ? '#4ade80' : '#475569');
-                $border = $is_active ? 'border-bottom: 3px solid ##2ecc71;' : ($is_done ? 'border-bottom: 3px solid #4ade80;' : 'border-bottom: 3px solid transparent;');
+                $color = $is_active ? '#2ecc71' : ($is_done ? '#4ade80' : '#475569');
+                $border = $is_active ? 'border-bottom: 3px solid #2ecc71;' : ($is_done ? 'border-bottom: 3px solid #4ade80;' : 'border-bottom: 3px solid transparent;');
             ?>
             <div style="flex:1; padding:10px 5px; text-align:center; background:<?=$bg?>; <?=$border?> transition:0.3s;">
                 <div style="color:<?=$color?>; font-family:'Oswald',sans-serif; font-size:0.75rem; letter-spacing:1px;"><?=$label?></div>
@@ -298,7 +298,7 @@ if ($hafta > 17) {
                 </a>
             <?php else: ?>
                 <a href="?asama=<?= $asama ?>&simule=1&full=1" 
-                   style="background: linear-gradient(90deg,#1d4ed8,##2ecc71); color:#000; font-family:'Oswald',sans-serif; font-weight:800; padding:12px 30px; border-radius:8px; text-decoration:none; font-size:1.1rem; letter-spacing:1px; box-shadow:0 0 20px rgba(0,229,255,0.4);">
+                   style="background: linear-gradient(90deg,#1d4ed8,#2ecc71); color:#000; font-family:'Oswald',sans-serif; font-weight:800; padding:12px 30px; border-radius:8px; text-decoration:none; font-size:1.1rem; letter-spacing:1px; box-shadow:0 0 20px rgba(0,229,255,0.4);">
                     <i class="fa-solid fa-forward-fast me-2"></i> AKTİF TURU SİMÜLE ET
                 </a>
             <?php endif; ?>
@@ -373,8 +373,8 @@ if ($hafta > 17) {
                 if(!empty($tur1)):
             ?>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:10px;">
-                <h5 class="font-oswald text-center" style="color:##2ecc71; font-size:1rem; border-bottom:1px solid rgba(0,229,255,0.2); padding-bottom:8px;">İLK BACAK</h5>
-                <h5 class="font-oswald text-center" style="color:##2ecc71; font-size:1rem; border-bottom:1px solid rgba(0,229,255,0.2); padding-bottom:8px;">RÖVANŞ</h5>
+                <h5 class="font-oswald text-center" style="color:#2ecc71; font-size:1rem; border-bottom:1px solid rgba(0,229,255,0.2); padding-bottom:8px;">İLK BACAK</h5>
+                <h5 class="font-oswald text-center" style="color:#2ecc71; font-size:1rem; border-bottom:1px solid rgba(0,229,255,0.2); padding-bottom:8px;">RÖVANŞ</h5>
             </div>
             <?php endif; ?>
             <?php endif; ?>
