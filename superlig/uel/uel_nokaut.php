@@ -309,7 +309,7 @@ if ($hafta > 17) {
     <!-- ŞAMPİYON BLOKU - FİNAL SONRASI -->
     <div style="max-width:860px; margin: 0 auto 30px; padding: 0 1rem;">
         <div style="background: linear-gradient(135deg, rgba(212,175,55,0.15), rgba(0,229,255,0.08)); border: 2px solid #d4af37; border-radius: 18px; padding: 36px 30px; text-align:center; box-shadow: 0 0 40px rgba(212,175,55,0.25);">
-            <div style="font-family:'Oswald',sans-serif; font-size:0.9rem; color:#94a3b8; letter-spacing:3px; margin-bottom:12px;">UEFA ŞAMPİYONLAR LİGİ FİNALİ</div>
+            <div style="font-family:'Oswald',sans-serif; font-size:0.9rem; color:#94a3b8; letter-spacing:3px; margin-bottom:12px;">UEFA AVRUPA LİGİ FİNALİ</div>
             <div style="display:flex; justify-content:center; align-items:center; gap:30px; flex-wrap:wrap;">
                 <div style="text-align:center;">
                     <img src="<?= htmlspecialchars($final_sampiyon['logo']) ?>" style="width:90px; height:90px; object-fit:contain; filter:drop-shadow(0 0 14px #d4af37);">

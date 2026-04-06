@@ -133,7 +133,7 @@ sutunEkleUecl($pdo, 'uecl_oyuncular', 'lig', "VARCHAR(50) DEFAULT 'Avrupa'");
 function uecl_ulke_puani_ekle($pdo, $takim_id, $puan) {
     try {
         $lig = $pdo->query("SELECT lig FROM uecl_takimlar WHERE id = " . (int)$takim_id)->fetchColumn();
-        $ulke = uecl_uecl_ulke_bul($lig);
+        $ulke = uecl_ulke_bul($lig);
         if ($ulke) {
             $pdo->exec("UPDATE uefa_coefficients SET toplam_puan = toplam_puan + $puan, sezon_puan = sezon_puan + $puan WHERE ulke_adi = '$ulke'");
             $pdo->exec("UPDATE uefa_siralamasi SET toplam_puan = toplam_puan + " . (int)($puan * 1000) . ", guncel_sezon_puan = guncel_sezon_puan + " . (int)($puan * 1000) . " WHERE ulke_adi = '$ulke'");
@@ -141,7 +141,7 @@ function uecl_ulke_puani_ekle($pdo, $takim_id, $puan) {
     } catch(Throwable $e) {}
 }
 
-function uecl_uecl_ulke_bul($lig) {
+function uecl_ulke_bul($lig) {
     $map = [
         'Süper Lig'  => 'Türkiye',
         'Premier Lig' => 'İngiltere',

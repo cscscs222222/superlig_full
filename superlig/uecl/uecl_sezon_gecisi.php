@@ -16,7 +16,7 @@ try {
          FROM uecl_maclar m
          JOIN uecl_takimlar t1 ON m.ev = t1.id
          JOIN uecl_takimlar t2 ON m.dep = t2.id
-         WHERE m.hafta = 15 AND m.ev_skor IS NOT NULL AND m.sezon_yil = $guncel_sezon
+         WHERE m.hafta = 17 AND m.ev_skor IS NOT NULL AND m.sezon_yil = $guncel_sezon
          LIMIT 1"
     )->fetch(PDO::FETCH_ASSOC);
 } catch(Throwable $e) {}
