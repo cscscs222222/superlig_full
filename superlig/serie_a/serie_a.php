@@ -301,7 +301,7 @@ if($kullanici_takim) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* SERIE A TEMASI (KIRMIZI, SİYAH, ALMANYA) */
+        /* SERIE A TEMASI (YEŞİL, ALTIN, İTALYA) */
         :root {
             --it-primary: #10b981;   /* İtalya Yeşili */
             --it-secondary: #059669; /* Koyu Yeşil */

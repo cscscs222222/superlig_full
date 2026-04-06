@@ -48,7 +48,7 @@ if(isset($_POST['takim_yemegi'])) {
     }
 }
 
-// --- ALMAN BASINI İLE TOPLANTI ---
+// --- İTALYAN BASINI İLE TOPLANTI ---
 if(isset($_POST['cevap_ver'])) {
     $cevap_id = $_POST['cevap_id'];
     
@@ -65,7 +65,7 @@ if(isset($_POST['cevap_ver'])) {
         } elseif($cevap_id == 3) {
             $pdo->exec("UPDATE it_takimlar SET butce = GREATEST(0, butce - 800000) WHERE id = $kullanici_takim_id"); 
             $pdo->exec("UPDATE it_oyuncular SET moral = LEAST(100, moral + 25) WHERE takim_id = $kullanici_takim_id");
-            $mesaj = "Agresif açıklamalarınız Allianz Arena'yı ateşledi (+25 Moral) ama Serie A Disiplin Kurulu ceza kesti (-€800K)!";
+            $mesaj = "Agresif açıklamalarınız San Siro'yı ateşledi (+25 Moral) ama Serie A Disiplin Kurulu ceza kesti (-€800K)!";
         }
         
         $pdo->exec("UPDATE it_ayar SET son_basin_haftasi = $guncel_hafta WHERE id = 1");

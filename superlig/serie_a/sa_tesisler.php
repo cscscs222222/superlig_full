@@ -50,7 +50,7 @@ if(isset($_POST['altyapi_gelistir'])) {
     $maliyet = $mevcut_seviye * 12000000; // Her seviye 12 Milyon Euro
     
     if($mevcut_seviye >= 10) {
-        $mesaj = "Nachwuchszentrum zirvededir (Maksimum seviye 10)!"; $mesaj_tipi = "warning";
+        $mesaj = "Accademia zirvededir (Maksimum seviye 10)!"; $mesaj_tipi = "warning";
     } elseif($takim['butce'] >= $maliyet) {
         $pdo->exec("UPDATE it_takimlar SET butce = butce - $maliyet, altyapi_seviye = altyapi_seviye + 1 WHERE id = $kullanici_takim_id");
         $mesaj = "Altyapı modernize edildi! Yeni Seviye: " . ($mevcut_seviye + 1);
@@ -62,7 +62,7 @@ if(isset($_POST['altyapi_gelistir'])) {
     }
 }
 
-// ALTYAPIDAN OYUNCU ÇIKARMA (ALMAN İSİMLERİ)
+// ALTYAPIDAN OYUNCU ÇIKARMA (İTALYAN İSİMLERİ)
 if(isset($_POST['genc_cikar'])) {
     $scout_maliyeti = 2000000; // Scout maliyeti 2M
 
@@ -227,7 +227,7 @@ function paraFormatla($sayi) {
                     
                     <div class="d-flex gap-2 mt-3">
                         <form method="POST" class="w-50">
-                            <button type="submit" name="altyapi_gelistir" class="btn-upgrade" style="background: rgba(0,0,0,0.5); border: 1px solid var(--it-secondary); color: var(--it-secondary);" onclick="return confirm('Nachwuchszentrum\'u geliştirmek için €<?= number_format(($takim['altyapi_seviye']*12), 1) ?>M harcanacak. Confermare?');">
+                            <button type="submit" name="altyapi_gelistir" class="btn-upgrade" style="background: rgba(0,0,0,0.5); border: 1px solid var(--it-secondary); color: var(--it-secondary);" onclick="return confirm('Accademia\'u geliştirmek için €<?= number_format(($takim['altyapi_seviye']*12), 1) ?>M harcanacak. Confermare?');">
                                 Geliştir (€<?= number_format(($takim['altyapi_seviye']*12), 1) ?>M)
                             </button>
                         </form>
