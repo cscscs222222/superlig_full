@@ -402,6 +402,8 @@ if($kullanici_takim) {
 
         .pro-navbar { background: rgba(10, 28, 82, 0.85); backdrop-filter: blur(24px); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 1000; padding: 0 2rem; height: 75px; display: flex; justify-content: space-between; align-items: center;}
         .nav-brand { display: flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 700; color: #fff; text-decoration: none; text-shadow: 0 0 10px var(--cl-accent); }
+        .nav-brand img.league-logo { height: 38px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); transition: transform 0.3s ease; }
+        .nav-brand:hover img.league-logo { transform: scale(1.1); }
         .nav-brand i { color: var(--cl-accent); }
         .nav-link-item { color: var(--cl-silver); font-weight: 500; font-size: 0.95rem; padding: 8px 16px; text-decoration: none; transition: 0.2s; }
         .nav-link-item:hover { color: #fff; text-shadow: 0 0 10px var(--cl-accent); }
@@ -487,7 +489,12 @@ if($kullanici_takim) {
 <body>
 
     <nav class="pro-navbar">
-        <a href="cl.php" class="nav-brand"><i class="fa-solid fa-futbol"></i> <span class="font-oswald">CHAMPIONS LEAGUE</span></a>
+        <a href="cl.php" class="nav-brand">
+            <img src="https://upload.wikimedia.org/wikipedia/en/thumb/b/bf/UEFA_Champions_League_logo_2.svg/200px-UEFA_Champions_League_logo_2.svg.png"
+                 alt="Champions League" class="league-logo"
+                 onerror="this.style.display='none'">
+            <span class="font-oswald">CHAMPIONS LEAGUE</span>
+        </a>
         
         <div class="nav-menu d-none d-lg-flex gap-1">
             <a href="cl.php" class="nav-link-item"><i class="fa-solid fa-house me-1"></i>Ana Sayfa</a>

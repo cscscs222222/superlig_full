@@ -132,7 +132,9 @@ $kalan_tum_maclar = $pdo->query("SELECT COUNT(*) FROM maclar WHERE ev_skor IS NU
         .font-oswald { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
 
         .pro-navbar { background: rgba(15,23,42,0.95); border-bottom: 2px solid var(--sl-secondary); padding: 0 2rem; height: 75px; display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index:1000;}
-        .nav-brand { font-size: 1.4rem; font-weight: 900; color: #fff; text-decoration: none; }
+        .nav-brand { font-size: 1.4rem; font-weight: 900; color: #fff; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+        .nav-brand img.league-logo { height: 38px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); transition: transform 0.3s ease; }
+        .nav-brand:hover img.league-logo { transform: scale(1.1); }
         .nav-brand i { color: var(--sl-secondary); }
         .nav-link-item { color: #94a3b8; font-weight: 600; padding: 8px 16px; text-decoration: none; transition: 0.2s; }
         .nav-link-item:hover { color: #fff; }
@@ -186,7 +188,12 @@ $kalan_tum_maclar = $pdo->query("SELECT COUNT(*) FROM maclar WHERE ev_skor IS NU
 
     <nav class="pro-navbar">
         <div class="d-flex align-items-center gap-4">
-            <a href="superlig.php" class="nav-brand"><i class="fa-solid fa-moon"></i> <span class="font-oswald">SÜPER LİG</span></a>
+            <a href="superlig.php" class="nav-brand">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/S%C3%BCper_Lig_logo.svg/200px-S%C3%BCper_Lig_logo.svg.png"
+                     alt="Süper Lig" class="league-logo"
+                     onerror="this.style.display='none'">
+                <span class="font-oswald">SÜPER LİG</span>
+            </a>
             <div class="nav-menu d-none d-lg-flex gap-2">
                 <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez Hub</a>
                 <a href="kadro.php" class="nav-link-item"><i class="fa-solid fa-users"></i> Taktik Odası</a>
