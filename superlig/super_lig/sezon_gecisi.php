@@ -90,17 +90,21 @@ if(isset($_POST['yeni_sezona_gec'])) {
         } catch(Throwable $e) {}
     }
 
-    // 5. OYUNCULARI YAŞLANDIR VE DURUMLARI SIFIRLA
-    $pdo->exec("UPDATE oyuncular SET yas = yas + 1, form = 6, fitness = 100, ceza_hafta = 0, sakatlik_hafta = 0");
-    
-    // (Opsiyonel) 38 Yaşına gelenleri emekli et
-    $pdo->exec("DELETE FROM oyuncular WHERE yas >= 38");
+    // 5. FAZ 3: EMEKLİLİK VE REGEN SİSTEMİ
+    // MatchEngine ile emeklileri tespit et ve regen üret
+    require_once '../MatchEngine.php';
+    $engine = new MatchEngine($pdo, '');
+    $emekliler = $engine->emeklilik_ve_regen($guncel_sezon, 'Süper Lig');
 
-    // 6. İSTATİSTİKLERİ VE FİKSTÜRÜ SIFIRLA
+    // 6. OYUNCULARI YAŞLANDIR VE DURUMLARI SIFIRLA
+    // (Emekli edilenler zaten silindi; geri kalanlar yaşlanır)
+    $pdo->exec("UPDATE oyuncular SET yas = yas + 1, form = 6, fitness = 100, ceza_hafta = 0, sakatlik_hafta = 0, sakatlik_turu = NULL");
+
+    // 7. İSTATİSTİKLERİ VE FİKSTÜRÜ SIFIRLA
     $pdo->exec("UPDATE takimlar SET puan = 0, galibiyet = 0, beraberlik = 0, malubiyet = 0, atilan_gol = 0, yenilen_gol = 0");
     $pdo->exec("TRUNCATE TABLE maclar"); // Bütün eski maçları siler (Fikstür jeneratörü yeniden çalışacak)
     
-    // 7. YILI VE HAFTAYI İLERLET
+    // 8. YILI VE HAFTAYI İLERLET
     $yeni_sezon_yili = $guncel_sezon + 1;
     $pdo->exec("UPDATE ayar SET hafta = 1, sezon_yil = $yeni_sezon_yili");
     

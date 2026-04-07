@@ -1,6 +1,6 @@
 <?php
 // ==============================================================================
-// SUPER LIG - KADRO VE TAKTİK MERKEZİ (PRO DASHBOARD)
+// SUPER LIG - KADRO VE TAKTİK MERKEZİ (PRO DASHBOARD - FAZ 3)
 // ==============================================================================
 include '../db.php';
 
@@ -13,6 +13,18 @@ if (!$kullanici_takim_id) {
     header("Location: superlig.php");
     exit;
 }
+
+// FAZ 3: Eksik sütunları otomatik ekle
+function sutunEkleKadro($pdo, $tablo, $sutun, $tip) {
+    try {
+        if ($pdo->query("SHOW COLUMNS FROM `$tablo` LIKE '$sutun'")->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE `$tablo` ADD `$sutun` $tip");
+        }
+    } catch(Throwable $e) {}
+}
+sutunEkleKadro($pdo, 'oyuncular', 'play_styles',   "VARCHAR(255) DEFAULT NULL");
+sutunEkleKadro($pdo, 'oyuncular', 'sakatlik_turu', "VARCHAR(100) DEFAULT NULL");
+sutunEkleKadro($pdo, 'oyuncular', 'ulke',          "VARCHAR(60)  DEFAULT 'Türkiye'");
 
 $mesaj = "";
 $mesaj_tipi = "";
@@ -249,11 +261,15 @@ $takim_kalitesi = $takim_kalitesi ? round($takim_kalitesi, 1) : 0;
                                 <?php foreach($ilk_11 as $o): 
                                     $status = "";
                                     if($o['ceza_hafta'] > 0) $status = "<span class='status-badge status-banned'>{$o['ceza_hafta']}H Cezalı</span>";
-                                    elseif($o['sakatlik_hafta'] > 0) $status = "<span class='status-badge status-injured'>Sakat</span>";
+                                    elseif($o['sakatlik_hafta'] > 0) {
+                                        $tur_str = !empty($o['sakatlik_turu']) ? htmlspecialchars($o['sakatlik_turu']) . ' ' : '';
+                                        $status = "<span class='status-badge status-injured'>{$tur_str}({$o['sakatlik_hafta']}H)</span>";
+                                    }
+                                    $styles_html = !empty($o['play_styles']) ? '<div class="mt-1">' . implode('', array_map(fn($s) => "<span style='background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#f59e0b;padding:1px 5px;border-radius:3px;font-size:0.65rem;margin:1px;display:inline-block;'>⚡ " . htmlspecialchars(trim($s)) . "</span>", explode(',', $o['play_styles']))) . '</div>' : '';
                                 ?>
                                 <tr>
                                     <td><span class="pos-badge pos-<?= $o['mevki'] ?>"><?= $o['mevki'] ?></span></td>
-                                    <td class="fw-bold text-white text-start"><?= htmlspecialchars($o['isim']) ?> <?= $status ?></td>
+                                    <td class="fw-bold text-white text-start"><?= htmlspecialchars($o['isim']) ?> <?= $status ?><?= $styles_html ?></td>
                                     <td><span class="ovr-box"><?= $o['ovr'] ?></span></td>
                                     <td class="fw-bold <?= $o['form'] >= 8 ? 'text-success' : ($o['form'] <= 4 ? 'text-danger' : 'text-warning') ?>"><?= $o['form'] ?>.0</td>
                                     <td>
@@ -285,11 +301,15 @@ $takim_kalitesi = $takim_kalitesi ? round($takim_kalitesi, 1) : 0;
                                 <?php foreach($yedekler as $o): 
                                     $status = "";
                                     if($o['ceza_hafta'] > 0) $status = "<span class='status-badge status-banned'>{$o['ceza_hafta']}H Cezalı</span>";
-                                    elseif($o['sakatlik_hafta'] > 0) $status = "<span class='status-badge status-injured'>Sakat</span>";
+                                    elseif($o['sakatlik_hafta'] > 0) {
+                                        $tur_str = !empty($o['sakatlik_turu']) ? htmlspecialchars($o['sakatlik_turu']) . ' ' : '';
+                                        $status = "<span class='status-badge status-injured'>{$tur_str}({$o['sakatlik_hafta']}H)</span>";
+                                    }
+                                    $styles_html = !empty($o['play_styles']) ? '<div class="mt-1">' . implode('', array_map(fn($s) => "<span style='background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#f59e0b;padding:1px 5px;border-radius:3px;font-size:0.65rem;margin:1px;display:inline-block;'>⚡ " . htmlspecialchars(trim($s)) . "</span>", explode(',', $o['play_styles']))) . '</div>' : '';
                                 ?>
                                 <tr>
                                     <td><span class="pos-badge pos-<?= $o['mevki'] ?>"><?= $o['mevki'] ?></span></td>
-                                    <td class="fw-bold text-white text-start"><?= htmlspecialchars($o['isim']) ?> <?= $status ?></td>
+                                    <td class="fw-bold text-white text-start"><?= htmlspecialchars($o['isim']) ?> <?= $status ?><?= $styles_html ?></td>
                                     <td><span class="ovr-box"><?= $o['ovr'] ?></span></td>
                                     <td class="fw-bold <?= $o['form'] >= 8 ? 'text-success' : ($o['form'] <= 4 ? 'text-danger' : 'text-warning') ?>"><?= $o['form'] ?>.0</td>
                                     <td>
@@ -321,11 +341,15 @@ $takim_kalitesi = $takim_kalitesi ? round($takim_kalitesi, 1) : 0;
                                 <?php foreach($kadro_disi as $o): 
                                     $status = "";
                                     if($o['ceza_hafta'] > 0) $status = "<span class='status-badge status-banned'>{$o['ceza_hafta']}H Cezalı</span>";
-                                    elseif($o['sakatlik_hafta'] > 0) $status = "<span class='status-badge status-injured'>Sakat</span>";
+                                    elseif($o['sakatlik_hafta'] > 0) {
+                                        $tur_str = !empty($o['sakatlik_turu']) ? htmlspecialchars($o['sakatlik_turu']) . ' ' : '';
+                                        $status = "<span class='status-badge status-injured'>{$tur_str}({$o['sakatlik_hafta']}H)</span>";
+                                    }
+                                    $styles_html = !empty($o['play_styles']) ? '<div class="mt-1">' . implode('', array_map(fn($s) => "<span style='background:rgba(245,158,11,0.15);border:1px solid #f59e0b;color:#f59e0b;padding:1px 5px;border-radius:3px;font-size:0.65rem;margin:1px;display:inline-block;'>⚡ " . htmlspecialchars(trim($s)) . "</span>", explode(',', $o['play_styles']))) . '</div>' : '';
                                 ?>
                                 <tr>
                                     <td><span class="pos-badge pos-<?= $o['mevki'] ?>"><?= $o['mevki'] ?></span></td>
-                                    <td class="fw-bold text-white text-start"><?= htmlspecialchars($o['isim']) ?> <?= $status ?></td>
+                                    <td class="fw-bold text-white text-start"><?= htmlspecialchars($o['isim']) ?> <?= $status ?><?= $styles_html ?></td>
                                     <td><span class="ovr-box" style="filter:grayscale(100%);"><?= $o['ovr'] ?></span></td>
                                     <td class="fw-bold <?= $o['form'] >= 8 ? 'text-success' : ($o['form'] <= 4 ? 'text-danger' : 'text-warning') ?>"><?= $o['form'] ?>.0</td>
                                     <td>

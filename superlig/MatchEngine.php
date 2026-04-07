@@ -1,7 +1,7 @@
 <?php
 // ==============================================================================
-// CORE MATCH ENGINE V3.0 - FAZ 2: CANLI MAÇ MOTORU 2.0
-// Yeni Özellikler: Hava Durumu, VAR Sistemi, Derbi Atmosferi, Kaleci Zekası
+// CORE MATCH ENGINE V4.0 - FAZ 3: OYUNCU PSİKOLOJİSİ VE YAPAY ZEKA
+// Yeni Özellikler: PlayStyles, Oyuncu Kimyası, Derin Sakatlık
 // Tüm ligler (tr, pl, cl, es, de, fr, it, pt) için ortaktır.
 // ==============================================================================
 
@@ -117,9 +117,14 @@ class MatchEngine {
         $ev_takim_guc  = ($ev_takim  && isset($ev_takim['hucum']))  ? (($ev_takim['hucum']  + $ev_takim['savunma'])  / 2) : 70;
         $dep_takim_guc = ($dep_takim && isset($dep_takim['hucum'])) ? (($dep_takim['hucum'] + $dep_takim['savunma']) / 2) : 70;
 
+        // --- FAZ 3: OYUNCU KİMYASI ---
+        // Aynı uyruklu/ligden oyuncular takıma bonus OVR katar
+        $ev_kimya  = $this->kimya_hesapla($ev_id);
+        $dep_kimya = $this->kimya_hesapla($dep_id);
+
         // 3. Nihai Gücü Hesapla
-        $ev_guc  = ($ev_ort  !== null && $ev_ort  !== false ? (float)$ev_ort  : $ev_takim_guc)  + 3; // Ev sahibi taraftar avantajı (+3)
-        $dep_guc = ($dep_ort !== null && $dep_ort !== false ? (float)$dep_ort : $dep_takim_guc);
+        $ev_guc  = ($ev_ort  !== null && $ev_ort  !== false ? (float)$ev_ort  : $ev_takim_guc)  + 3 + $ev_kimya['bonus']; // Ev sahibi taraftar avantajı (+3)
+        $dep_guc = ($dep_ort !== null && $dep_ort !== false ? (float)$dep_ort : $dep_takim_guc) + $dep_kimya['bonus'];
 
         // --- FAZ 2: DERBİ ATMOSFER SİSTEMİ ---
         // Derbi maçlarda deplasman takımı taraftar baskısından -5 moral penaltısı alır.
@@ -204,6 +209,32 @@ class MatchEngine {
 
                 $stmt = $this->pdo->prepare("UPDATE $tbl SET fitness=?, form=?, ovr=?, fiyat=? WHERE id=?");
                 $stmt->execute([$yeni_fitness, $yeni_form, $yeni_ovr, $yeni_fiyat, $o['id']]);
+
+                // --- FAZ 3: DERİN SAKATLIK SİSTEMİ ---
+                // Her maçta %8 sakatlık ihtimali; yağmurda %12'ye çıkar
+                $sakatlik_esik = ($hava === 'Yağmurlu') ? 12 : 8;
+                if (rand(1, 100) <= $sakatlik_esik && ($o['sakatlik_hafta'] ?? 0) == 0) {
+                    // Takımın Sağlık Merkezi seviyesini bul
+                    $smtbl = $this->prefix . 'takimlar';
+                    try {
+                        $sm_stmt = $this->pdo->prepare("SELECT saglik_merkezi_seviye FROM $smtbl WHERE id=? LIMIT 1");
+                        $sm_stmt->execute([$t['id']]);
+                        $sm_seviye = (int)($sm_stmt->fetchColumn() ?: 1);
+                    } catch (Throwable $e) { $sm_seviye = 1; }
+
+                    $sakatlik = $this->derin_sakatlik_uret($o['yas'], $sm_seviye);
+                    try {
+                        $this->pdo->prepare(
+                            "UPDATE $tbl SET sakatlik_hafta=?, sakatlik_turu=?, ilk_11=0, yedek=1 WHERE id=?"
+                        )->execute([$sakatlik['hafta'], $sakatlik['tur'], $o['id']]);
+                    } catch (Throwable $e) {
+                        // sakatlik_turu sütunu yoksa sadece hafta güncelle
+                        try {
+                            $this->pdo->prepare("UPDATE $tbl SET sakatlik_hafta=?, ilk_11=0, yedek=1 WHERE id=?")
+                                ->execute([$sakatlik['hafta'], $o['id']]);
+                        } catch (Throwable $e2) {}
+                    }
+                }
             }
             // Yedekleri dinlendir
             $stmt2 = $this->pdo->prepare("UPDATE $tbl SET fitness = LEAST(100, fitness + 20) WHERE takim_id = ? AND ilk_11 = 0");
@@ -250,6 +281,10 @@ class MatchEngine {
             $tip = (rand(0, 10) > 8) ? 'Kırmızı' : 'Sarı';
             $kartlar[] = ['tip' => 'kart', 'detay' => $tip, 'dakika' => rand(5, 90), 'oyuncu' => $kart_goren];
         }
+
+        // --- FAZ 3: PLAY STYLES - FRİKİK USTASI ---
+        // Eğer takımda Frikik Ustası varsa, serbest vuruş golü üret
+        $this->playstyle_serbest_vurus($takim_id, $olaylar);
 
         usort($olaylar, function($a, $b) { return $a['dakika'] <=> $b['dakika']; });
         usort($kartlar, function($a, $b) { return $a['dakika'] <=> $b['dakika']; });
@@ -309,6 +344,312 @@ class MatchEngine {
             'var_olaylar' => json_encode($var_olaylar,  JSON_UNESCAPED_UNICODE),
             'kurtaris'    => $kurtaris_say,
         ];
+    }
+
+    // =========================================================================
+    // FAZ 3: OYUNCU KİMYASI (PLAYER CHEMISTRY)
+    // =========================================================================
+    // Aynı uyruklu veya aynı ligden oyuncular için bonus OVR hesaplar.
+    // Başlangıç XI'ndeki oyunculara bakarak takım performansına +5 OVR ekler.
+    // =========================================================================
+    public function kimya_hesapla($takim_id) {
+        $tbl_oyuncular = $this->prefix . 'oyuncular';
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT ulke, lig FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1"
+            );
+            $stmt->execute([$takim_id]);
+            $oyuncular = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            return ['bonus' => 0, 'aciklama' => ''];
+        }
+
+        if (count($oyuncular) < 2) return ['bonus' => 0, 'aciklama' => ''];
+
+        $ulkeler = []; $ligler = [];
+        foreach ($oyuncular as $o) {
+            if (!empty($o['ulke'])) $ulkeler[] = $o['ulke'];
+            if (!empty($o['lig']))  $ligler[]  = $o['lig'];
+        }
+
+        $bonus     = 0;
+        $aciklama  = '';
+
+        // Aynı ulkeden en az 2 oyuncu → +5 OVR
+        $ulke_sayim = array_count_values($ulkeler);
+        arsort($ulke_sayim);
+        foreach ($ulke_sayim as $ulke => $sayi) {
+            if ($sayi >= 2) {
+                $bonus += 5;
+                $aciklama .= "$sayi $ulke oyuncusu kimya yarattı (+5 OVR). ";
+                break; // Tek bonus yeterli
+            }
+        }
+
+        // Aynı ligden en az 3 oyuncu → ek +5 OVR
+        $lig_sayim = array_count_values($ligler);
+        arsort($lig_sayim);
+        foreach ($lig_sayim as $lig => $sayi) {
+            if ($sayi >= 3) {
+                $bonus += 5;
+                $aciklama .= "$sayi oyuncu aynı lig geçmişiyle kimya katkısı (+5 OVR). ";
+                break;
+            }
+        }
+
+        return ['bonus' => $bonus, 'aciklama' => trim($aciklama)];
+    }
+
+    // =========================================================================
+    // FAZ 3: DERİN SAKATLIK SİSTEMİ
+    // =========================================================================
+    // Sakatlık olduğunda basit "X hafta" yerine gerçekçi bir teşhis üretir.
+    // Sağlık Merkezi seviyesi iyileşme süresini kısaltır.
+    // =========================================================================
+    public function derin_sakatlik_uret($oyuncu_yas, $saglik_merkezi_seviye = 1) {
+        // Olası sakatlık türleri: [ad, hafta_min, hafta_max]
+        $sakatlıklar_listesi = [
+            // Hafif (1-2 hafta)
+            ['Kas Krampı',               1,  2],
+            ['Ayak Bileği Burkması',     1,  3],
+            ['Hafif Kas Çekmesi',        1,  2],
+            // Orta (3-8 hafta)
+            ['Arka Adale Çekmesi',       3,  5],
+            ['Hamstring Zorlanması',     3,  6],
+            ['Kasık Ağrısı',             2,  4],
+            ['Diz Şişliği',              4,  8],
+            ['Köprücük Kemiği Kırığı',   6,  8],
+            // Ağır (10+ hafta)
+            ['Menisküs Yırtığı',        10, 16],
+            ['Aşil Tendonu Yırtığı',    16, 24],
+            ['Çapraz Bağ Kopması',      20, 26],
+        ];
+
+        // Yaşlı oyuncularda ağır sakatlık ihtimali artar
+        if ($oyuncu_yas >= 32) {
+            // Ağır sakatlıklar listede ağırlıklı
+            $weights = [1,1,1, 2,2,2,2,2, 3,3,3];
+        } else {
+            $weights = [3,3,3, 2,2,2,2,2, 1,1,1];
+        }
+
+        // Ağırlıklı rastgele seçim
+        $toplam = array_sum($weights);
+        $rastgele = rand(1, $toplam);
+        $kumulatif = 0;
+        $secilen = $sakatlıklar_listesi[0];
+        foreach ($sakatlıklar_listesi as $i => $s) {
+            $kumulatif += $weights[$i];
+            if ($rastgele <= $kumulatif) {
+                $secilen = $s;
+                break;
+            }
+        }
+
+        // Sağlık Merkezi indirimi: her seviye %5 süre kısaltır (max %45)
+        $indirim_oran = min(0.45, ($saglik_merkezi_seviye - 1) * 0.05);
+        $hafta_min = (int)ceil($secilen[1] * (1 - $indirim_oran));
+        $hafta_max = (int)ceil($secilen[2] * (1 - $indirim_oran));
+        $hafta = rand(max(1, $hafta_min), max(1, $hafta_max));
+
+        return [
+            'tur'   => $secilen[0],
+            'hafta' => $hafta,
+            'etiket' => $secilen[0] . ' (' . $hafta . ' Hafta)',
+        ];
+    }
+
+    // =========================================================================
+    // FAZ 3: PLAY STYLES ENTEGRASYONU (SERBEST VUR / HIZLI / KASAP)
+    // =========================================================================
+    // Serbest vuruş kazanıldığında "Frikik Ustası" rozetiyle gol ihtimali artar.
+    // Hız canavarı olan oyuncular kontra atakta gol üretir.
+    // =========================================================================
+    public function playstyle_serbest_vurus($takim_id, &$olaylar) {
+        $tbl_oyuncular = $this->prefix . 'oyuncular';
+        try {
+            // Frikik Ustası rozetine sahip oyuncular
+            $stmt = $this->pdo->prepare(
+                "SELECT isim FROM $tbl_oyuncular
+                 WHERE takim_id=? AND ilk_11=1 AND play_styles LIKE '%Frikik Ustası%'"
+            );
+            $stmt->execute([$takim_id]);
+            $ustalar = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        } catch (Throwable $e) {
+            return;
+        }
+
+        if (empty($ustalar)) return;
+
+        // %35 ihtimalle Frikik Ustası gol atar
+        if (rand(1, 100) <= 35) {
+            $usta = $ustalar[array_rand($ustalar)];
+            $olaylar[] = [
+                'tip'     => 'gol',
+                'dakika'  => rand(15, 88),
+                'oyuncu'  => $usta,
+                'asist'   => '-',
+                'ozel'    => '⚡ Frikik Ustası Rozeti ile İnanılmaz Frikik Golü!',
+            ];
+        }
+    }
+
+    // =========================================================================
+    // FAZ 3: MEDYA SIZINTISI KONTROLÜ
+    // =========================================================================
+    // Yüksek OVR'li (>=75) yıldızlar yedekte kalırsa takım moralini düşürür.
+    // Bu metot sezon geçişinden veya superlig.php'den çağrılabilir.
+    // =========================================================================
+    public function medya_sizintisi_kontrol($takim_id, $hafta, $sezon_yil) {
+        $tbl_oyuncular = $this->prefix . 'oyuncular';
+        $tbl_takimlar  = $this->prefix . 'takimlar';
+
+        try {
+            // OVR>=75, yedekte (yedek=1, ilk_11=0) ve morali düşmüş oyuncular
+            $stmt = $this->pdo->prepare(
+                "SELECT id, isim, ovr, moral FROM $tbl_oyuncular
+                 WHERE takim_id=? AND ilk_11=0 AND yedek=1 AND ovr>=75 AND moral < 40"
+            );
+            $stmt->execute([$takim_id]);
+            $yildizlar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            return null;
+        }
+
+        if (empty($yildizlar)) return null;
+
+        // En mutsuz yıldızı seç
+        usort($yildizlar, fn($a, $b) => $a['moral'] <=> $b['moral']);
+        $yildiz = $yildizlar[0];
+
+        // Takımın form / moralini -10 düşür
+        try {
+            $this->pdo->prepare(
+                "UPDATE $tbl_oyuncular SET moral = GREATEST(10, moral - 10) WHERE takim_id=?"
+            )->execute([$takim_id]);
+
+            // Log kaydet
+            $this->pdo->prepare(
+                "INSERT IGNORE INTO medya_sizinti_log
+                    (sezon_yil, hafta, takim_id, oyuncu_id, oyuncu_isim, ovr, etki)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)"
+            )->execute([
+                $sezon_yil, $hafta, $takim_id,
+                $yildiz['id'], $yildiz['isim'], $yildiz['ovr'],
+                'Takım moralini -10 düşürdü. Kadro dışı seçeneği değerlendirin.'
+            ]);
+        } catch (Throwable $e) { /* Sessizce geç */ }
+
+        return $yildiz;
+    }
+
+    // =========================================================================
+    // FAZ 3: EMEKLİLİK VE REGEN SİSTEMİ
+    // =========================================================================
+    // 35+ yaşındaki oyuncular sezon sonunda emekliye ayrılabilir.
+    // Emekli olan yıldız (OVR>=75) için 16-17 yaşında Regen üretilir.
+    // =========================================================================
+    public function emeklilik_ve_regen($sezon_yil, $lig = 'Süper Lig') {
+        $tbl_oyuncular = $this->prefix . 'oyuncular';
+
+        // Emeklilik Adayları: yaş >= 35
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT * FROM $tbl_oyuncular WHERE yas >= 35 ORDER BY yas DESC"
+            );
+            $stmt->execute();
+            $adaylar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            return [];
+        }
+
+        $emekliler = [];
+        foreach ($adaylar as $o) {
+            // Emeklilik şansı: yaş 35→%30, 36→%50, 37→%70, 38→%100
+            $sans = min(100, ($o['yas'] - 34) * 30);
+            if (rand(1, 100) > $sans) continue;
+
+            $emekliler[] = $o;
+
+            // Oyuncuyu veritabanından kaldır (emekli)
+            try {
+                $this->pdo->prepare("DELETE FROM $tbl_oyuncular WHERE id=?")->execute([$o['id']]);
+            } catch (Throwable $e) {}
+
+            // Yıldız emekliyse (OVR>=75) → Regen üret
+            if ($o['ovr'] >= 75) {
+                $this->regen_uret($o, $sezon_yil, $lig);
+            }
+        }
+
+        return $emekliler;
+    }
+
+    private function regen_uret($emekli, $sezon_yil, $lig) {
+        $tbl_oyuncular = $this->prefix . 'oyuncular';
+
+        // Regen adı (emeklinin ülkesine göre)
+        $ulke = $emekli['ulke'] ?? 'Türkiye';
+        $isim_havuzu = $this->regen_isim_havuzu($ulke);
+        $yeni_isim = $isim_havuzu['isim'][array_rand($isim_havuzu['isim'])]
+                   . ' '
+                   . $isim_havuzu['soyad'][array_rand($isim_havuzu['soyad'])];
+
+        // Regen yaşı 16-17
+        $regen_yas = rand(16, 17);
+        // OVR: emeklinin OVR * 0.8 civarında başlar (potansiyel yüksek)
+        $regen_ovr        = max(55, (int)($emekli['ovr'] * 0.8));
+        $regen_potansiyel = min(95, $emekli['ovr'] + rand(0, 5));
+        $regen_fiyat      = ($regen_ovr * $regen_ovr) * 1200;
+
+        // Regen'ı boş ajanlar havuzuna ekle (takim_id=0) veya emeklinin eski takımına
+        $takim_id = $emekli['takim_id'] ?? 0;
+
+        try {
+            $this->pdo->prepare(
+                "INSERT INTO $tbl_oyuncular
+                    (takim_id, isim, mevki, ovr, yas, fiyat, lig, ilk_11, yedek, ulke, play_styles)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, ?, NULL)"
+            )->execute([
+                $takim_id, $yeni_isim, $emekli['mevki'],
+                $regen_ovr, $regen_yas, $regen_fiyat,
+                $lig, $ulke
+            ]);
+
+            // Log kaydet
+            $this->pdo->prepare(
+                "INSERT INTO regen_log
+                    (sezon_yil, lig, emekli_isim, emekli_ovr, emekli_ulke,
+                     regen_isim, regen_yas, regen_ovr, regen_potansiyel)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            )->execute([
+                $sezon_yil, $lig,
+                $emekli['isim'], $emekli['ovr'], $ulke,
+                $yeni_isim, $regen_yas, $regen_ovr, $regen_potansiyel,
+            ]);
+        } catch (Throwable $e) { /* Sessizce geç */ }
+    }
+
+    private function regen_isim_havuzu($ulke) {
+        $havuzlar = [
+            'Türkiye'   => ['isim' => ['Kerem','Arda','Cengiz','Orkun','Ozan','Emirhan','Ferdi','Halil','Barış','Uğur'],
+                            'soyad'=> ['Aktürkoğlu','Güler','Ünder','Kökçü','Kabak','Demir','Yılmaz','Kaya','Çelik','Doğan']],
+            'Brezilya'  => ['isim' => ['Gabriel','Rodrygo','Endrick','Lucas','Vini','Matheus','Igor','Pedro','Kauan','Felipe'],
+                            'soyad'=> ['Santos','Silva','Pereira','Oliveira','Costa','Ferreira','Souza','Rodrigues','Lima','Alves']],
+            'Arjantin'  => ['isim' => ['Lautaro','Julian','Enzo','Thiago','Alejandro','Franco','Matias','Nahuel','Santiago','Rodrigo'],
+                            'soyad'=> ['Martinez','Alvarez','Fernandez','Moreno','Gomez','Lopez','Sanchez','Romero','Torres','Diaz']],
+            'İspanya'   => ['isim' => ['Pedri','Gavi','Yamal','Fermin','Pau','Marc','Javi','Alejandro','Nico','Brahim'],
+                            'soyad'=> ['Garcia','Martinez','Lopez','Sanchez','Fernandez','Gonzalez','Rodriguez','Perez','Torres','Ruiz']],
+            'Fransa'    => ['isim' => ['Warren','Bradley','Mathys','Ilyes','Loris','Tom','Noah','Hugo','Théo','Axel'],
+                            'soyad'=> ['Zaïre-Emery','Barcola','Tel','Camavinga','Tchouameni','Dembélé','Henry','Giroud','Martin','Dupont']],
+            'Almanya'   => ['isim' => ['Florian','Jamal','Xavi','Felix','Leroy','Jonas','Kai','Niclas','Timo','Anton'],
+                            'soyad'=> ['Wirtz','Musiala','Simons','Nmecha','Sane','Hofmann','Havertz','Fullkrug','Werner','Anton']],
+            'İtalya'    => ['isim' => ['Lorenzo','Sandro','Davide','Nicolò','Manuel','Giacomo','Giovanni','Federico','Matteo','Samuele'],
+                            'soyad'=> ['Pellegrini','Tonali','Frattesi','Barella','Locatelli','Raspadori','Di Lorenzo','Chiesa','Gatti','Ricci']],
+            'İngiltere' => ['isim' => ['Jude','Phil','Bukayo','Mason','Marcus','Jack','Emile','Harvey','Cole','Liam'],
+                            'soyad'=> ['Bellingham','Foden','Saka','Mount','Rashford','Grealish','Smith Rowe','Elliott','Palmer','Delap']],
+        ];
+        return $havuzlar[$ulke] ?? $havuzlar['Türkiye'];
     }
 
     // --- FAZ 2: ALTIN ELDİVEN - SEZON SONU ÖDÜL LOJİĞİ ---
