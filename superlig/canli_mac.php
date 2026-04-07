@@ -211,7 +211,7 @@ $yazilan_ev = 0;
 foreach($ev_olaylar as $o) {
     if($yazilan_ev >= $mac['ev_skor']) break;
     if(isset($o['tip']) && strtolower($o['tip']) == 'gol') {
-        $tum_olaylar[] = ['dk' => $o['dakika'] ?? rand(1,90), 'tur' => 'gol', 'kim' => 'ev', 'oyuncu' => $o['oyuncu'] ?? 'Bilinmiyor', 'asist' => $o['asist'] ?? '-'];
+        $tum_olaylar[] = ['dk' => $o['dakika'] ?? rand(1,90), 'tur' => 'gol', 'kim' => 'ev', 'oyuncu' => $o['oyuncu'] ?? 'Bilinmiyor', 'asist' => $o['asist'] ?? '-', 'ozel' => $o['ozel'] ?? null];
         $yazilan_ev++;
     }
 }
@@ -219,7 +219,7 @@ $yazilan_dep = 0;
 foreach($dep_olaylar as $o) {
     if($yazilan_dep >= $mac['dep_skor']) break;
     if(isset($o['tip']) && strtolower($o['tip']) == 'gol') {
-        $tum_olaylar[] = ['dk' => $o['dakika'] ?? rand(1,90), 'tur' => 'gol', 'kim' => 'dep', 'oyuncu' => $o['oyuncu'] ?? 'Bilinmiyor', 'asist' => $o['asist'] ?? '-'];
+        $tum_olaylar[] = ['dk' => $o['dakika'] ?? rand(1,90), 'tur' => 'gol', 'kim' => 'dep', 'oyuncu' => $o['oyuncu'] ?? 'Bilinmiyor', 'asist' => $o['asist'] ?? '-', 'ozel' => $o['ozel'] ?? null];
         $yazilan_dep++;
     }
 }
@@ -849,7 +849,12 @@ elseif ($hava_durumu === 'Karlı') { $hava_icon = '❄️'; $hava_renk = '#e0f2f
                     setTimeout(() => goalAnim.classList.remove('show'), 3000);
                     let cumb = golCümleleri[Math.floor(Math.random() * golCümleleri.length)];
                     let asistText = (e.asist && e.asist !== '-') ? ` <span style='color:rgba(255,255,255,0.6);'>(Asist: ${e.asist})</span>` : '';
-                    addCommentary(`<strong>GOOOOOOLLL!</strong> ${e.oyuncu} sahneye çıktı! ${cumb}${asistText}`, 'gol');
+                    // FAZ 3: PlayStyle özel gol mesajı
+                    if (e.ozel) {
+                        addCommentary(`⚡ <strong>PLAYSTYLE GOL!</strong> ${e.ozel} — ${e.oyuncu} (${takimAdi})!`, 'gol');
+                    } else {
+                        addCommentary(`<strong>GOOOOOOLLL!</strong> ${e.oyuncu} sahneye çıktı! ${cumb}${asistText}`, 'gol');
+                    }
                 }
                 else if (e.tur === 'sari') {
                     addCommentary(`Sert müdahale. <strong>${e.oyuncu}</strong> (${takimAdi}) sarı kart görüyor.`, 'sari');

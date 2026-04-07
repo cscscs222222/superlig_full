@@ -15,7 +15,11 @@ function sutunEkle($pdo, $tablo, $sutun, $tip) {
 // EKSİK SÜTUNLARI OTOMATİK OLUŞTUR (HATA BURADAN ÇÖZÜLÜYOR)
 sutunEkle($pdo, 'takimlar', 'stadyum_seviye', 'INT DEFAULT 1');
 sutunEkle($pdo, 'takimlar', 'altyapi_seviye', 'INT DEFAULT 1');
+sutunEkle($pdo, 'takimlar', 'saglik_merkezi_seviye', 'INT DEFAULT 1');
 sutunEkle($pdo, 'oyuncular', 'lig', "VARCHAR(50) DEFAULT 'Süper Lig'");
+sutunEkle($pdo, 'oyuncular', 'play_styles', "VARCHAR(255) DEFAULT NULL");
+sutunEkle($pdo, 'oyuncular', 'ulke', "VARCHAR(60) DEFAULT 'Türkiye'");
+sutunEkle($pdo, 'oyuncular', 'sakatlik_turu', "VARCHAR(100) DEFAULT NULL");
 
 // Kullanıcı ayarlarını çek
 $ayar = $pdo->query("SELECT * FROM ayar LIMIT 1")->fetch(PDO::FETCH_ASSOC);
@@ -98,7 +102,7 @@ if(isset($_POST['genc_cikar'])) {
         
         // Bütçeden düş ve oyuncuyu A Takım yedeklerine ekle
         $pdo->exec("UPDATE takimlar SET butce = butce - $scout_maliyeti WHERE id = $kullanici_takim_id");
-        $stmt = $pdo->prepare("INSERT INTO oyuncular (takim_id, isim, mevki, ovr, yas, fiyat, lig, ilk_11, yedek) VALUES (?, ?, ?, ?, ?, ?, 'Süper Lig', 0, 1)");
+        $stmt = $pdo->prepare("INSERT INTO oyuncular (takim_id, isim, mevki, ovr, yas, fiyat, lig, ilk_11, yedek, ulke) VALUES (?, ?, ?, ?, ?, ?, 'Süper Lig', 0, 1, 'Türkiye')");
         $stmt->execute([$kullanici_takim_id, $yeni_isim, $mevki, $ovr, $yas, $fiyat]);
         
         $mesaj = "Altyapıdan yeni bir oyuncu A Takıma yükseldi: $yeni_isim (OVR: $ovr).$mesaj_ek";
@@ -107,6 +111,26 @@ if(isset($_POST['genc_cikar'])) {
         
     } else {
         $mesaj = "Scout Maliyeti Yetersiz! Altyapı taraması için €1.5M gerekiyor."; $mesaj_tipi = "danger";
+    }
+}
+
+// SAĞLIK MERKEZİ GELİŞTİRME (FAZ 3)
+if(isset($_POST['saglik_gelistir'])) {
+    $mevcut_seviye = $takim['saglik_merkezi_seviye'] ?? 1;
+    $maliyet = $mevcut_seviye * 12000000; // Her seviye 12 Milyon Euro artar
+    
+    if($mevcut_seviye >= 10) {
+        $mesaj = "Sağlık Merkezi zaten maksimum (10) seviyede!"; $mesaj_tipi = "warning";
+    } elseif($takim['butce'] >= $maliyet) {
+        $pdo->exec("UPDATE takimlar SET butce = butce - $maliyet, saglik_merkezi_seviye = saglik_merkezi_seviye + 1 WHERE id = $kullanici_takim_id");
+        $yeni_seviye = $mevcut_seviye + 1;
+        $indirim = min(45, ($yeni_seviye - 1) * 5);
+        $mesaj = "Sağlık Merkezi modernize edildi! Yeni Seviye: " . $yeni_seviye . ". Sakatlık süreleri %" . $indirim . " daha kısa!";
+        $mesaj_tipi = "success";
+        $takim['butce'] -= $maliyet;
+        $takim['saglik_merkezi_seviye'] = $mevcut_seviye + 1;
+    } else {
+        $mesaj = "Yetersiz Bütçe! Sağlık Merkezi geliştirme maliyeti: €" . number_format($maliyet/1000000, 1) . "M"; $mesaj_tipi = "danger";
     }
 }
 
@@ -238,6 +262,40 @@ function paraFormatla($sayi) {
                             </button>
                         </form>
                     </div>
+                </div>
+            </div>
+
+            <!-- FAZ 3: SAĞLIK MERKEZİ -->
+            <?php $sm_seviye = $takim['saglik_merkezi_seviye'] ?? 1; $sm_indirim = min(45, ($sm_seviye-1)*5); ?>
+            <div class="col-lg-5 col-md-6">
+                <div class="panel-card" style="border-color: rgba(16,185,129,0.3);">
+                    <div class="icon-wrapper" style="background: rgba(16,185,129,0.1); border-color: #10b981; color: #10b981;"><i class="fa-solid fa-hospital"></i></div>
+                    <h3 class="font-oswald text-white mb-1">SAĞLIK MERKEZİ</h3>
+                    <p class="text-muted small fw-bold mb-3">Oyuncuların sakatlık sürelerini kısaltır. Gelişmiş ekipman = hızlı iyileşme.</p>
+                    
+                    <div class="level-text" style="color: #10b981;">LVL <?= $sm_seviye ?></div>
+                    <div class="level-badge" style="background: rgba(16,185,129,0.1); border: 1px solid #10b981;">
+                        Sakatlık Süresi: -%<?= $sm_indirim ?> İndirim
+                    </div>
+                    <p class="text-muted small mt-2">
+                        <?php if($sm_seviye >= 10): ?>
+                            <span class="text-success fw-bold">⭐ Dünya Standartlarında Sağlık Merkezi!</span>
+                        <?php else: ?>
+                            Bir üst seviyede -%<?= min(45, $sm_seviye*5) ?> indirime ulaşırsınız.
+                        <?php endif; ?>
+                    </p>
+                    
+                    <form method="POST" class="mt-3">
+                        <?php if($sm_seviye < 10): ?>
+                            <button type="submit" name="saglik_gelistir" class="btn-upgrade"
+                                style="background: #059669; border: none;"
+                                onclick="return confirm('Sağlık Merkezini geliştirmek için €<?= number_format(($sm_seviye*12), 1) ?>M harcanacak. Onaylıyor musunuz?');">
+                                <i class="fa-solid fa-circle-plus"></i> Geliştir (€<?= number_format(($sm_seviye*12), 1) ?>M)
+                            </button>
+                        <?php else: ?>
+                            <button class="btn-upgrade" disabled style="background:#374151; cursor:not-allowed;">Maksimum Seviye</button>
+                        <?php endif; ?>
+                    </form>
                 </div>
             </div>
 

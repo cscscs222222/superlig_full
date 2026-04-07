@@ -1,8 +1,9 @@
 <?php
 // ==============================================================================
-// SÜPER LİG - MEDYA, PSİKOLOJİ VE BASIN TOPLANTISI MERKEZİ (DARK RED THEME)
+// SÜPER LİG - MEDYA, PSİKOLOJİ VE BASIN TOPLANTISI MERKEZİ (FAZ 3 GELİŞTİRİLMİŞ)
 // ==============================================================================
 include '../db.php';
+require_once '../MatchEngine.php';
 
 // Güvenli Sütun Ekleme (Eğer yoksa Moral ve Basın Haftası sütunlarını ekler)
 function sutunEkle($pdo, $tablo, $sutun, $tip) {
@@ -12,11 +13,13 @@ function sutunEkle($pdo, $tablo, $sutun, $tip) {
     } catch(Throwable $e) {}
 }
 sutunEkle($pdo, 'oyuncular', 'moral', 'INT DEFAULT 80');
+sutunEkle($pdo, 'oyuncular', 'play_styles', "VARCHAR(255) DEFAULT NULL");
 sutunEkle($pdo, 'ayar', 'son_basin_haftasi', 'INT DEFAULT 0');
 
 $ayar = $pdo->query("SELECT * FROM ayar LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $kullanici_takim_id = $ayar['kullanici_takim_id'] ?? null;
 $guncel_hafta = $ayar['hafta'] ?? 1;
+$guncel_sezon = $ayar['sezon_yil'] ?? 2025;
 
 if (!$kullanici_takim_id) { header("Location: superlig.php"); exit; }
 
@@ -26,7 +29,6 @@ $mesaj = "";
 $mesaj_tipi = "";
 
 // --- PSİKOLOJİ MOTORU (Yedeklerin moralini düşür, oynayanlarınkini artır) ---
-// Bu butona basıldığında takımın güncel durumuna göre moraller hesaplanır
 if(isset($_POST['moralleri_guncelle'])) {
     // 11'de oynayanların morali artar
     $pdo->exec("UPDATE oyuncular SET moral = LEAST(100, moral + 5) WHERE takim_id = $kullanici_takim_id AND ilk_11 = 1");
@@ -35,8 +37,33 @@ if(isset($_POST['moralleri_guncelle'])) {
     // Sıradan yedeklerin morali yavaş düşer
     $pdo->exec("UPDATE oyuncular SET moral = GREATEST(10, moral - 5) WHERE takim_id = $kullanici_takim_id AND yedek = 1 AND ovr < 75");
     
-    $mesaj = "Takım psikolojisi güncellendi. Yıldız oyuncular yedek kalmaktan hiç hoşlanmıyor!";
-    $mesaj_tipi = "warning";
+    // FAZ 3: Medya Sızıntısı Kontrolü (MatchEngine üzerinden)
+    $engine = new MatchEngine($pdo, '');
+    $sizinti = $engine->medya_sizintisi_kontrol($kullanici_takim_id, $guncel_hafta, $guncel_sezon);
+    if ($sizinti) {
+        $mesaj = "⚠️ MEDYA SIZINTISI! {$sizinti['isim']} (OVR: {$sizinti['ovr']}) yedek kalmaktan bunaldı ve basına konuştu! Takımın morali genel olarak düştü. Oyuncuyu Kadro Dışı Bırakmayı değerlendirin.";
+        $mesaj_tipi = "danger";
+    } else {
+        $mesaj = "Takım psikolojisi güncellendi. Yıldız oyuncular yedek kalmaktan hiç hoşlanmıyor!";
+        $mesaj_tipi = "warning";
+    }
+}
+
+// --- FAZ 3: KADRO DIŞI BIRAK (Soyunma Odası İsyanı Yönetimi) ---
+if(isset($_POST['kadro_disi_birak']) && isset($_POST['oyuncu_id'])) {
+    $oyuncu_id = (int)$_POST['oyuncu_id'];
+    // Güvenlik: oyuncu benim mi? (parameterized)
+    $stmt_chk = $pdo->prepare("SELECT COUNT(*) FROM oyuncular WHERE id=? AND takim_id=?");
+    $stmt_chk->execute([$oyuncu_id, $kullanici_takim_id]);
+    $benim_mi = $stmt_chk->fetchColumn();
+    if ($benim_mi) {
+        $pdo->prepare("UPDATE oyuncular SET ilk_11=0, yedek=0, moral=GREATEST(10, moral-5) WHERE id=?")->execute([$oyuncu_id]);
+        $stmt_isim = $pdo->prepare("SELECT isim FROM oyuncular WHERE id=? LIMIT 1");
+        $stmt_isim->execute([$oyuncu_id]);
+        $o_isim = $stmt_isim->fetchColumn();
+        $mesaj = "✅ " . htmlspecialchars($o_isim) . " kadro dışı bırakıldı. Takım içi gerginlik azaldı ancak oyuncu morali biraz daha düştü.";
+        $mesaj_tipi = "success";
+    }
 }
 
 // --- TAKIM YEMEĞİ (Bütçe harcayarak moral düzeltme) ---
@@ -83,12 +110,24 @@ if(isset($_POST['cevap_ver'])) {
     }
 }
 
-// Oyuncuları Çek
+// Son Medya Sızıntılarını Çek
+try {
+    $son_sizintilar = $pdo->prepare(
+        "SELECT * FROM medya_sizinti_log WHERE takim_id=? ORDER BY created_at DESC LIMIT 5"
+    );
+    $son_sizintilar->execute([$kullanici_takim_id]);
+    $son_sizintilar = $son_sizintilar->fetchAll(PDO::FETCH_ASSOC);
+} catch(Throwable $e) { $son_sizintilar = []; }
+
+// Oyuncuları Çek (play_styles dahil)
 $oyuncular = $pdo->query("SELECT * FROM oyuncular WHERE takim_id = $kullanici_takim_id ORDER BY moral ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Ortalama Moral
 $ortalama_moral = $pdo->query("SELECT AVG(moral) FROM oyuncular WHERE takim_id = $kullanici_takim_id")->fetchColumn();
 $ortalama_moral = $ortalama_moral ? round($ortalama_moral) : 80;
+
+// FAZ 3: Sızıntı riski var mı? (OVR>=75, yedek, moral<40)
+$sizinti_risk = $pdo->query("SELECT COUNT(*) FROM oyuncular WHERE takim_id=$kullanici_takim_id AND ilk_11=0 AND yedek=1 AND ovr>=75 AND moral<40")->fetchColumn();
 
 function paraFormatla($sayi) {
     if ($sayi >= 1000000) return "€" . number_format($sayi / 1000000, 1) . "M";
@@ -100,6 +139,29 @@ function getMoralEmoji($moral) {
     if($moral >= 50) return ['🙂', 'text-warning', 'Normal'];
     if($moral >= 30) return ['😠', 'text-danger', 'Mutsuz'];
     return ['🤬', 'text-danger fw-bold', 'Transfer İstiyor!'];
+}
+
+// FAZ 3: PlayStyle rozetlerini HTML olarak formatla
+function formatPlayStyles($play_styles) {
+    if (empty($play_styles)) return '';
+    $rozetler = explode(',', $play_styles);
+    $html = '';
+    $renkler = [
+        'Frikik Ustası'  => '#f59e0b',
+        'Hız Canavarı'   => '#3b82f6',
+        'Kasap Stoper'   => '#ef4444',
+        'Kaptanlık Ruhu' => '#8b5cf6',
+        'Dribling Sihirbazı' => '#10b981',
+        'Kafa Golcüsü'   => '#f97316',
+        'Penaltı Ustası' => '#ec4899',
+    ];
+    foreach($rozetler as $rozet) {
+        $rozet = trim($rozet);
+        if(empty($rozet)) continue;
+        $renk = $renkler[$rozet] ?? '#6b7280';
+        $html .= "<span style='background:rgba(0,0,0,0.4);border:1px solid $renk;color:$renk;padding:2px 6px;border-radius:4px;font-size:0.7rem;font-weight:700;margin:2px;display:inline-block;'>⚡ $rozet</span>";
+    }
+    return $html;
 }
 ?>
 
@@ -287,18 +349,45 @@ function getMoralEmoji($moral) {
                                 $durum = $moral_data[2];
                                 
                                 $is_crisis = ($o['moral'] < 30) ? "crisis-alert" : "";
-                                $kadro_durum = $o['ilk_11'] ? '<span class="badge bg-success">İlk 11</span>' : '<span class="badge bg-secondary">Yedek</span>';
+                                if ($o['ilk_11']) {
+                                    $kadro_durum = '<span class="badge bg-success">İlk 11</span>';
+                                } elseif ($o['yedek']) {
+                                    $kadro_durum = '<span class="badge bg-secondary">Yedek</span>';
+                                } else {
+                                    $kadro_durum = '<span class="badge bg-dark border border-danger text-danger">Kadro Dışı</span>';
+                                }
+                                $is_sizinti_riski = (!$o['ilk_11'] && $o['yedek'] && $o['ovr'] >= 75 && $o['moral'] < 40);
                             ?>
                             <div class="player-row <?= $is_crisis ?>">
-                                <div class="d-flex align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-3 flex-grow-1">
                                     <div class="fs-4"><?= $emoji ?></div>
                                     <div>
-                                        <div class="fw-bold text-white"><?= htmlspecialchars($o['isim']) ?> <span class="text-muted small">(OVR: <?= $o['ovr'] ?>)</span></div>
+                                        <div class="fw-bold text-white"><?= htmlspecialchars($o['isim']) ?>
+                                            <span class="text-muted small">(OVR: <?= $o['ovr'] ?>)</span>
+                                            <?php if($is_sizinti_riski): ?>
+                                                <span class="badge ms-1" style="background:#7f1d1d;color:#fca5a5;font-size:0.65rem;">📰 Basına Sızabilir!</span>
+                                            <?php endif; ?>
+                                        </div>
                                         <div class="small <?= $text_class ?>"><?= $durum ?> • %<?= $o['moral'] ?> Moral</div>
+                                        <?php if(!empty($o['play_styles'])): ?>
+                                            <div class="mt-1"><?= formatPlayStyles($o['play_styles']) ?></div>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                                <div>
+                                <div class="d-flex align-items-center gap-2">
                                     <?= $kadro_durum ?>
+                                    <?php if($is_sizinti_riski && $o['yedek']): ?>
+                                        <form method="POST" class="m-0">
+                                            <input type="hidden" name="oyuncu_id" value="<?= $o['id'] ?>">
+                                            <button type="submit" name="kadro_disi_birak"
+                                                class="btn btn-sm"
+                                                style="background:#7f1d1d;color:#fca5a5;border:1px solid #ef4444;font-size:0.7rem;padding:3px 8px;"
+                                                onclick="return confirm('<?= htmlspecialchars($o['isim']) ?> kadro dışı bırakılsın mı?');"
+                                                title="Kadro Dışı Bırak">
+                                                <i class="fa-solid fa-user-slash"></i>
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <?php endforeach; ?>
@@ -308,6 +397,34 @@ function getMoralEmoji($moral) {
             </div>
 
         </div>
+
+        <!-- FAZ 3: SON MEDYA SIZINTILARI -->
+        <?php if(!empty($son_sizintilar)): ?>
+        <div class="row g-4 mt-2">
+            <div class="col-12">
+                <div class="panel-card">
+                    <div class="panel-header" style="color: #ef4444;">
+                        <i class="fa-solid fa-newspaper me-2"></i> SON MEDYA SIZINTILARI
+                        <?php if($sizinti_risk > 0): ?>
+                            <span class="badge ms-2" style="background:#7f1d1d;color:#fca5a5;"><?= $sizinti_risk ?> Yıldız Risk Altında!</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="p-3">
+                        <?php foreach($son_sizintilar as $sz): ?>
+                        <div class="d-flex align-items-start gap-3 mb-3 p-3" style="background:rgba(239,68,68,0.05);border:1px solid rgba(239,68,68,0.2);border-radius:8px;">
+                            <div style="font-size:1.5rem;">📰</div>
+                            <div>
+                                <div class="fw-bold text-white"><?= htmlspecialchars($sz['oyuncu_isim']) ?> <span class="text-muted small">(OVR: <?= $sz['ovr'] ?>)</span></div>
+                                <div class="small text-danger">Hafta <?= $sz['hafta'] ?> • <?= $sz['etki'] ?></div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
