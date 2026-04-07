@@ -300,7 +300,12 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
     <div class="d-none d-lg-flex gap-3">
         <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez</a>
         <a href="ligue1.php" class="nav-link-item" style="color:#fff;"><i class="fa-solid fa-tv"></i> Fikstür</a>
-        <a href="l1_puan.php" class="nav-link-item"><i class="fa-solid fa-chart-bar"></i> Puan Tablosu</a>
+        <a href="l1_kadro.php" class="nav-link-item"><i class="fa-solid fa-users"></i> Kadro</a>
+        <a href="l1_transfer.php" class="nav-link-item"><i class="fa-solid fa-comments-dollar"></i> Transfer</a>
+        <a href="l1_puan.php" class="nav-link-item"><i class="fa-solid fa-chart-bar"></i> Puan</a>
+        <a href="l1_basin.php" class="nav-link-item"><i class="fa-solid fa-microphone"></i> Basın</a>
+        <a href="l1_tesisler.php" class="nav-link-item"><i class="fa-solid fa-building"></i> Tesisler</a>
+        <a href="../coupe_de_france/coupe_de_france.php" class="nav-link-item"><i class="fa-solid fa-shield-halved"></i> Coupe de France</a>
         <a href="l1_sezon_gecisi.php" class="nav-link-item"><i class="fa-solid fa-trophy"></i> Sezon Sonu</a>
     </div>
     <div class="d-flex gap-2">

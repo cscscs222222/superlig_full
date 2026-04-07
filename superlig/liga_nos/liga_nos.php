@@ -292,7 +292,12 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
     <div class="d-none d-lg-flex gap-3">
         <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez</a>
         <a href="liga_nos.php" class="nav-link-item" style="color:#fff;"><i class="fa-solid fa-tv"></i> Fikstür</a>
-        <a href="ln_puan.php" class="nav-link-item"><i class="fa-solid fa-chart-bar"></i> Puan Tablosu</a>
+        <a href="ln_kadro.php" class="nav-link-item"><i class="fa-solid fa-users"></i> Kadro</a>
+        <a href="ln_transfer.php" class="nav-link-item"><i class="fa-solid fa-comments-dollar"></i> Transfer</a>
+        <a href="ln_puan.php" class="nav-link-item"><i class="fa-solid fa-chart-bar"></i> Puan</a>
+        <a href="ln_basin.php" class="nav-link-item"><i class="fa-solid fa-microphone"></i> Basın</a>
+        <a href="ln_tesisler.php" class="nav-link-item"><i class="fa-solid fa-building"></i> Tesisler</a>
+        <a href="../taca_de_portugal/taca_de_portugal.php" class="nav-link-item"><i class="fa-solid fa-shield-halved"></i> Taça de Portugal</a>
         <a href="ln_sezon_gecisi.php" class="nav-link-item"><i class="fa-solid fa-trophy"></i> Sezon Sonu</a>
     </div>
     <div class="d-flex gap-2">

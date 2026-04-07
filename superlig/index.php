@@ -706,6 +706,33 @@ foreach ($sampiyon_ligler as $lig_adi => $ayar_tablosu) {
                 </div>
             </a>
 
+            <!-- YERLİ KUPALAR -->
+            <a href="coupe_de_france/coupe_de_france.php" class="mode-card" style="--card-color:#003f8a;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-shield-halved" style="font-size:3rem; color:#003f8a;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">COUPE DE FRANCE</h2>
+                    <div class="card-desc">Fransa'nın ulusal kupasında eleme usulü şampiyonluk mücadelesi.</div>
+                    <div class="card-cta" style="color:#3b82f6;"><i class="fa-solid fa-play"></i> OYNA</div>
+                </div>
+            </a>
+
+            <a href="taca_de_portugal/taca_de_portugal.php" class="mode-card" style="--card-color:#006600;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-shield-halved" style="font-size:3rem; color:#006600;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">TAÇA DE PORTUGAL</h2>
+                    <div class="card-desc">Portekiz'in ulusal kupasında efsanevi kulüplerle karşılaş.</div>
+                    <div class="card-cta" style="color:#4ade80;"><i class="fa-solid fa-play"></i> OYNA</div>
+                </div>
+            </a>
+
             <!-- FAZ 1: AVRUPA LİGİ -->
             <a href="uel/uel.php" class="mode-card" style="--card-color:#f04e23;">
                 <div class="card-logo-wrapper">
