@@ -297,7 +297,7 @@ try {
         <div class="table-responsive">
             <table class="table table-dark-custom table-hover">
                 <thead>
-                    <tr><th>SEZON</th><th>OYUNCU</th><th>KULÜP</th><th>LİG</th><th>GOL</th><th>PUAN</th></tr>
+                    <tr><th>SEZON</th><th>OYUNCU</th><th>KULÜP</th><th>LİG</th><th>GOL</th><th>ASİST</th><th>PUAN</th></tr>
                 </thead>
                 <tbody>
                 <?php foreach ($gecmis as $g): ?>
@@ -306,7 +306,8 @@ try {
                         <td class="fw-bold"><?= htmlspecialchars($g['oyuncu_isim']) ?></td>
                         <td><?= htmlspecialchars($g['takim_adi']) ?></td>
                         <td><span class="lig-badge"><?= htmlspecialchars($g['takim_lig']) ?></span></td>
-                        <td><?= $g['gol'] ?></td>
+                        <td><?= (int)($g['gol'] ?? 0) ?></td>
+                        <td><?= (int)($g['asist'] ?? 0) ?></td>
                         <td><?= number_format($g['toplam_puan'], 1) ?></td>
                     </tr>
                 <?php endforeach; ?>

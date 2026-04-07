@@ -112,23 +112,23 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
         .nav-links a:hover { background:rgba(212,175,55,0.1); color:var(--gold); }
         .hero-section { text-align:center; padding:50px 20px 30px; }
         .hero-title { font-size:3rem; font-weight:900; color:#fff; margin:0; }
-        .hero-sub { color:#666; font-size:0.95rem; letter-spacing:2px; margin-top:8px; }
+        .hero-sub { color:#94a3b8; font-size:0.95rem; letter-spacing:2px; margin-top:8px; }
         .global-stats { display:flex; justify-content:center; gap:32px; flex-wrap:wrap; margin:24px 0; }
         .global-stat { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:16px 28px; text-align:center; }
         .global-stat-val { font-family:'Oswald',sans-serif; font-size:2.2rem; font-weight:900; color:var(--gold); }
-        .global-stat-lbl { font-size:0.72rem; color:#555; text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
-        .section-title { font-family:'Oswald',sans-serif; font-size:1.1rem; color:#555; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
+        .global-stat-lbl { font-size:0.72rem; color:#94a3b8; text-transform:uppercase; letter-spacing:1.5px; margin-top:4px; }
+        .section-title { font-family:'Oswald',sans-serif; font-size:1.1rem; color:#94a3b8; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; }
         .lig-kart { background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:20px; text-decoration:none; color:#fff; display:block; transition:0.3s; position:relative; overflow:hidden; }
         .lig-kart:hover { transform:translateY(-4px); color:#fff; background:rgba(255,255,255,0.07); }
         .lig-kart .lig-accent-bar { position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:16px 0 0 16px; }
         .lig-adi { font-family:'Oswald',sans-serif; font-size:1.3rem; font-weight:800; }
-        .lig-hafta-text { font-size:0.8rem; color:#666; margin-top:4px; }
+        .lig-hafta-text { font-size:0.8rem; color:#94a3b8; margin-top:4px; }
         .hafta-progress { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; margin-top:12px; overflow:hidden; }
         .hafta-bar { height:100%; border-radius:3px; transition:width 0.4s ease; }
         .avrupa-badge { font-size:0.65rem; font-weight:800; padding:3px 8px; border-radius:20px; letter-spacing:1px; text-transform:uppercase; vertical-align:middle; display:inline-flex; align-items:center; gap:4px; }
-        .sezon-badge { background:rgba(255,255,255,0.06); color:#666; border:1px solid var(--border); border-radius:20px; padding:3px 10px; font-size:0.72rem; }
+        .sezon-badge { background:rgba(255,255,255,0.06); color:#94a3b8; border:1px solid var(--border); border-radius:20px; padding:3px 10px; font-size:0.72rem; }
         .coefficient-tbl { width:100%; border-collapse:collapse; }
-        .coefficient-tbl th { font-size:0.72rem; color:#444; text-transform:uppercase; letter-spacing:1px; padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; }
+        .coefficient-tbl th { font-size:0.72rem; color:#64748b; text-transform:uppercase; letter-spacing:1px; padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; }
         .coefficient-tbl td { padding:10px; font-size:0.88rem; border-bottom:1px solid rgba(255,255,255,0.03); }
         .coefficient-tbl tr:hover td { background:rgba(212,175,55,0.04); }
         .coef-bar-bg { background:rgba(255,255,255,0.05); border-radius:3px; height:6px; margin-top:4px; }
@@ -188,13 +188,22 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
 
     <!-- SEZON İLERLEME BARI -->
     <div class="container" style="max-width:700px;">
-        <div class="d-flex justify-content-between" style="font-size:0.75rem;color:#444;margin-bottom:4px;">
+        <div class="d-flex justify-content-between" style="font-size:0.75rem;color:#64748b;margin-bottom:4px;">
             <span>SEZON BAŞI</span>
             <span><?= $sezon_ilerleme ?>% TAMAMLANDI</span>
             <span>SEZON SONU</span>
         </div>
         <div class="sezon-progress-wrap">
             <div class="sezon-progress-bar" style="width:<?= $sezon_ilerleme ?>%;"></div>
+        </div>
+        <!-- GLOBAL HAFTA OYNAT KISAYOLU -->
+        <div class="d-flex gap-3 flex-wrap mt-3">
+            <a href="play_week.php" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-family:'Oswald',sans-serif;font-size:0.95rem;font-weight:800;letter-spacing:1px;text-decoration:none;text-transform:uppercase;box-shadow:0 4px 18px rgba(37,99,235,0.35);">
+                <i class="fa-solid fa-play"></i> GLOBAL HAFTAYI OYNA
+            </a>
+            <a href="play_week.php" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-family:'Oswald',sans-serif;font-size:0.95rem;font-weight:800;letter-spacing:1px;text-decoration:none;text-transform:uppercase;box-shadow:0 4px 18px rgba(220,38,38,0.35);">
+                <i class="fa-solid fa-forward-fast"></i> TÜM SEZONU SİMÜLE ET
+            </a>
         </div>
     </div>
 
@@ -207,14 +216,14 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
             <!-- TAKVIM BAŞLIĞI -->
             <div class="takvim-header">
                 <div>
-                    <div style="font-size:0.75rem;color:#555;letter-spacing:1px;">KÜRESEL ZAMAN</div>
+                    <div style="font-size:0.75rem;color:#94a3b8;letter-spacing:1px;">KÜRESEL ZAMAN</div>
                     <div class="font-oswald" style="font-size:1.4rem;color:#fff;">Sezon <?= $ortalama_sezon ?>/<?= $ortalama_sezon+1 ?></div>
                 </div>
                 <span class="global-hafta-badge">HAFTA <?= $ortalama_hafta ?></span>
             </div>
 
             <!-- LİGLER -->
-            <div class="mb-3" style="font-size:0.7rem;color:#444;letter-spacing:1px;text-transform:uppercase;">
+            <div class="mb-3" style="font-size:0.7rem;color:#64748b;letter-spacing:1px;text-transform:uppercase;">
                 <i class="fa-solid fa-flag me-1"></i>Ulusal Ligler
             </div>
             <div class="row g-3 mb-4">
@@ -249,7 +258,7 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
             </div>
 
             <!-- AVRUPA KUPALARI -->
-            <div class="mb-3" style="font-size:0.7rem;color:#444;letter-spacing:1px;text-transform:uppercase;">
+            <div class="mb-3" style="font-size:0.7rem;color:#64748b;letter-spacing:1px;text-transform:uppercase;">
                 <i class="fa-solid fa-earth-europe me-1"></i>Avrupa Kupaları
             </div>
             <div class="row g-3">
@@ -273,7 +282,7 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
                                 <div class="hafta-bar" style="width:<?= $pct ?>%;background:<?= $l['renk'] ?>;opacity:0.8;"></div>
                             </div>
                             <?php else: ?>
-                            <div class="lig-hafta-text" style="color:#444;">Takımlar bekleniyor</div>
+                            <div class="lig-hafta-text" style="color:#64748b;">Takımlar bekleniyor</div>
                             <?php endif; ?>
                         </div>
                     </a>
@@ -287,24 +296,24 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
                 <div class="super-cup-card">
                     <div class="row align-items-center">
                         <div class="col-md-6">
-                            <div style="font-size:0.75rem;color:#666;letter-spacing:1px;">UCL ŞAMPİYONU</div>
+                            <div style="font-size:0.75rem;color:#94a3b8;letter-spacing:1px;">UCL ŞAMPİYONU</div>
                             <div class="font-oswald" style="font-size:1.3rem;color:#00e5ff;">
                                 <?= isset($son_sampiyon['UCL']) ? htmlspecialchars($son_sampiyon['UCL']['sampiyon_adi']) : '— Henüz Yok —' ?>
                             </div>
                             <?php if (isset($son_sampiyon['UCL'])): ?>
-                            <div style="font-size:0.72rem;color:#444;"><?= $son_sampiyon['UCL']['sezon_yil'] ?> sezonu</div>
+                            <div style="font-size:0.72rem;color:#64748b;"><?= $son_sampiyon['UCL']['sezon_yil'] ?> sezonu</div>
                             <?php endif; ?>
                         </div>
                         <div class="col-md-2 text-center">
-                            <span class="font-oswald" style="color:#333;font-size:1.4rem;">VS</span>
+                            <span class="font-oswald" style="color:#94a3b8;font-size:1.4rem;">VS</span>
                         </div>
                         <div class="col-md-4">
-                            <div style="font-size:0.75rem;color:#666;letter-spacing:1px;">UEL ŞAMPİYONU</div>
+                            <div style="font-size:0.75rem;color:#94a3b8;letter-spacing:1px;">UEL ŞAMPİYONU</div>
                             <div class="font-oswald" style="font-size:1.3rem;color:#f04e23;">
                                 <?= isset($son_sampiyon['UEL']) ? htmlspecialchars($son_sampiyon['UEL']['sampiyon_adi']) : '— Henüz Yok —' ?>
                             </div>
                             <?php if (isset($son_sampiyon['UEL'])): ?>
-                            <div style="font-size:0.72rem;color:#444;"><?= $son_sampiyon['UEL']['sezon_yil'] ?> sezonu</div>
+                            <div style="font-size:0.72rem;color:#64748b;"><?= $son_sampiyon['UEL']['sezon_yil'] ?> sezonu</div>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -316,7 +325,7 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
                     </div>
                     <?php endif; ?>
                     <?php if ($super_cup): ?>
-                    <div class="mt-2" style="font-size:0.8rem;color:#555;">
+                    <div class="mt-2" style="font-size:0.8rem;color:#94a3b8;">
                         Son Süper Kupa: <strong style="color:var(--gold);"><?= htmlspecialchars($super_cup['kazanan']) ?></strong> (<?= $super_cup['ucl_skor'] ?> – <?= $super_cup['uel_skor'] ?>)
                     </div>
                     <?php endif; ?>
@@ -330,7 +339,7 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
 
             <?php if (!empty($ulke_puanlari)): ?>
             <div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:20px;">
-                <p style="font-size:0.78rem;color:#555;margin-bottom:16px;">
+                <p style="font-size:0.78rem;color:#94a3b8;margin-bottom:16px;">
                     Ülkelerin Avrupa kupalarındaki performansına göre belirlenen katsayılar, 
                     bir sonraki sezonda kaç takımın hangi kupaya gireceğini belirler.
                 </p>
@@ -351,7 +360,7 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
                 <div style="margin-bottom:18px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
                         <div style="display:flex;align-items:center;gap:8px;">
-                            <span style="font-family:'Oswald',sans-serif;font-size:0.9rem;color:#333;width:18px;text-align:right;"><?= $sira ?>.</span>
+                            <span style="font-family:'Oswald',sans-serif;font-size:0.9rem;color:#94a3b8;width:18px;text-align:right;"><?= $sira ?>.</span>
                             <span style="font-size:1.1rem;"><?= $bayrak ?></span>
                             <span style="font-weight:600;font-size:0.9rem;"><?= htmlspecialchars($up['ulke_adi']) ?></span>
                         </div>
@@ -373,8 +382,8 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
                 </div>
                 <?php endforeach; ?>
 
-                <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:0.72rem;color:#444;line-height:1.7;">
-                    <strong style="color:#555;">Kota Sistemi:</strong><br>
+                <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:0.72rem;color:#64748b;line-height:1.7;">
+                    <strong style="color:#94a3b8;">Kota Sistemi:</strong><br>
                     • Her galibiyet: +0.3 puan (UCL), +0.3 (UEL), +0.2 (UECL)<br>
                     • Şampiyonluk bonusu: UCL +5.0, UEL +2.0, UECL +1.0<br>
                     • Üst 4 ülke: 4 UCL kotası | 5-6. ülke: 3 UCL kotası
@@ -382,10 +391,10 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
             </div>
             <?php else: ?>
             <div style="background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:40px;text-align:center;">
-                <i class="fa-solid fa-globe" style="font-size:2.5rem;color:#333;margin-bottom:12px;"></i>
-                <div style="color:#444;">UEFA katsayı verisi henüz yüklenmedi.</div>
+                <i class="fa-solid fa-globe" style="font-size:2.5rem;color:#94a3b8;margin-bottom:12px;"></i>
+                <div style="color:#64748b;">UEFA katsayı verisi henüz yüklenmedi.</div>
                 <div class="mt-3">
-                    <a href="champions_league/cl_uefa.php" style="color:#555;font-size:0.85rem;">→ UEFA Sayfasına Git</a>
+                    <a href="champions_league/cl_uefa.php" style="color:#94a3b8;font-size:0.85rem;">→ UEFA Sayfasına Git</a>
                 </div>
             </div>
             <?php endif; ?>
