@@ -56,17 +56,22 @@ function simulate_league_week(
                 $m['id'],
             ]);
 
-            $pdo->exec("UPDATE $takimlar_tbl SET atilan_gol = atilan_gol + $ev_skor,  yenilen_gol = yenilen_gol + $dep_skor WHERE id = {$m['ev']}");
-            $pdo->exec("UPDATE $takimlar_tbl SET atilan_gol = atilan_gol + $dep_skor, yenilen_gol = yenilen_gol + $ev_skor  WHERE id = {$m['dep']}");
+            $ev_id  = (int)$m['ev'];
+            $dep_id = (int)$m['dep'];
+            $ev_s   = (int)$ev_skor;
+            $dep_s  = (int)$dep_skor;
 
-            if ($ev_skor > $dep_skor) {
-                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+3, galibiyet=galibiyet+1 WHERE id={$m['ev']}");
-                $pdo->exec("UPDATE $takimlar_tbl SET malubiyet=malubiyet+1 WHERE id={$m['dep']}");
-            } elseif ($ev_skor === $dep_skor) {
-                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+1, beraberlik=beraberlik+1 WHERE id IN ({$m['ev']},{$m['dep']})");
+            $pdo->exec("UPDATE $takimlar_tbl SET atilan_gol = atilan_gol + $ev_s,  yenilen_gol = yenilen_gol + $dep_s WHERE id = $ev_id");
+            $pdo->exec("UPDATE $takimlar_tbl SET atilan_gol = atilan_gol + $dep_s, yenilen_gol = yenilen_gol + $ev_s  WHERE id = $dep_id");
+
+            if ($ev_s > $dep_s) {
+                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+3, galibiyet=galibiyet+1 WHERE id=$ev_id");
+                $pdo->exec("UPDATE $takimlar_tbl SET malubiyet=malubiyet+1 WHERE id=$dep_id");
+            } elseif ($ev_s === $dep_s) {
+                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+1, beraberlik=beraberlik+1 WHERE id IN ($ev_id,$dep_id)");
             } else {
-                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+3, galibiyet=galibiyet+1 WHERE id={$m['dep']}");
-                $pdo->exec("UPDATE $takimlar_tbl SET malubiyet=malubiyet+1 WHERE id={$m['ev']}");
+                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+3, galibiyet=galibiyet+1 WHERE id=$dep_id");
+                $pdo->exec("UPDATE $takimlar_tbl SET malubiyet=malubiyet+1 WHERE id=$ev_id");
             }
             $simulated++;
         } catch (Throwable $e) {}
@@ -74,8 +79,10 @@ function simulate_league_week(
 
     // Hafta bittiyse sayacı artır
     try {
-        $kalan = $pdo->query("SELECT COUNT(*) FROM $maclar_tbl WHERE hafta=$hafta AND ev_skor IS NULL")->fetchColumn();
-        if ($kalan == 0 && $hafta < $max_hafta) {
+        $hafta_int    = (int)$hafta;
+        $max_hafta_int = (int)$max_hafta;
+        $kalan = $pdo->query("SELECT COUNT(*) FROM $maclar_tbl WHERE hafta=$hafta_int AND ev_skor IS NULL")->fetchColumn();
+        if ($kalan == 0 && $hafta_int < $max_hafta_int) {
             $pdo->exec("UPDATE $ayar_tbl SET hafta = hafta + 1");
         }
     } catch (Throwable $e) {}
@@ -152,7 +159,8 @@ if (isset($_POST['tum_sezonu_simule'])) {
         }
         // Hafta sayacını sona al
         try {
-            $pdo->exec("UPDATE {$lig['ayar']} SET hafta = {$lig['max']}");
+            $max_son = (int)$lig['max'];
+            $pdo->exec("UPDATE {$lig['ayar']} SET hafta = $max_son");
         } catch (Throwable $e) {}
     }
     // Sezon sonu ekranına yönlendir (Super Lig sezon geçişi)

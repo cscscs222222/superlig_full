@@ -10,7 +10,10 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 // Takım seçim formu işle
 if (isset($_POST['takim_sec'])) {
     $tid = (int)$_POST['takim_id'];
-    try { $pdo->exec("UPDATE ayar SET kullanici_takim_id = $tid WHERE id = 1"); } catch (Throwable $e) {}
+    try {
+        $stmt = $pdo->prepare("UPDATE ayar SET kullanici_takim_id = ? WHERE id = 1");
+        $stmt->execute([$tid]);
+    } catch (Throwable $e) {}
     $_SESSION['kullanici_takim_id'] = $tid;
     header("Location: index.php"); exit;
 }
@@ -30,12 +33,14 @@ try {
 if ($kullanici_takim_id) {
     // Takım bilgisi
     try {
-        $kullanici_takim = $pdo->query(
+        $stmt = $pdo->prepare(
             "SELECT t.*, a.hafta, a.sezon_yil
                FROM takimlar t, ayar a
-              WHERE t.id = $kullanici_takim_id
+              WHERE t.id = ?
               LIMIT 1"
-        )->fetch(PDO::FETCH_ASSOC);
+        );
+        $stmt->execute([$kullanici_takim_id]);
+        $kullanici_takim = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {}
 
     // Puan tablosundaki sıra
@@ -54,38 +59,50 @@ if ($kullanici_takim_id) {
 
     // Sonraki maç
     try {
-        $hafta_mevcut = (int)$pdo->query("SELECT hafta FROM ayar LIMIT 1")->fetchColumn();
-        $sonraki_mac = $pdo->query(
+        $stmt = $pdo->prepare(
             "SELECT m.*, t1.takim_adi AS ev_ad, t2.takim_adi AS dep_ad
                FROM maclar m
                JOIN takimlar t1 ON t1.id = m.ev
                JOIN takimlar t2 ON t2.id = m.dep
-              WHERE (m.ev = $kullanici_takim_id OR m.dep = $kullanici_takim_id)
+              WHERE (m.ev = ? OR m.dep = ?)
                 AND m.ev_skor IS NULL
               ORDER BY m.hafta ASC LIMIT 1"
-        )->fetch(PDO::FETCH_ASSOC);
+        );
+        $stmt->execute([$kullanici_takim_id, $kullanici_takim_id]);
+        $sonraki_mac = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {}
 
     // Şampiyonlar Ligi durumu (cl_takimlar tablosunda var mı?)
     try {
-        $avrupa_durum = $pdo->query(
-            "SELECT 'UCL' as tur FROM cl_takimlar WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=$kullanici_takim_id LIMIT 1) LIMIT 1"
-        )->fetch(PDO::FETCH_ASSOC);
+        $stmt = $pdo->prepare(
+            "SELECT 'UCL' as tur FROM cl_takimlar
+              WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
+        );
+        $stmt->execute([$kullanici_takim_id]);
+        $avrupa_durum = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$avrupa_durum) {
-            $avrupa_durum = $pdo->query(
-                "SELECT 'UEL' as tur FROM uel_takimlar WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=$kullanici_takim_id LIMIT 1) LIMIT 1"
-            )->fetch(PDO::FETCH_ASSOC);
+            $stmt2 = $pdo->prepare(
+                "SELECT 'UEL' as tur FROM uel_takimlar
+                  WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
+            );
+            $stmt2->execute([$kullanici_takim_id]);
+            $avrupa_durum = $stmt2->fetch(PDO::FETCH_ASSOC);
         }
         if (!$avrupa_durum) {
-            $avrupa_durum = $pdo->query(
-                "SELECT 'UECL' as tur FROM uecl_takimlar WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=$kullanici_takim_id LIMIT 1) LIMIT 1"
-            )->fetch(PDO::FETCH_ASSOC);
+            $stmt3 = $pdo->prepare(
+                "SELECT 'UECL' as tur FROM uecl_takimlar
+                  WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
+            );
+            $stmt3->execute([$kullanici_takim_id]);
+            $avrupa_durum = $stmt3->fetch(PDO::FETCH_ASSOC);
         }
     } catch (Throwable $e) {}
 
     // Transfer bütçesi
     try {
-        $transfer_butce = (int)$pdo->query("SELECT butce FROM takimlar WHERE id=$kullanici_takim_id LIMIT 1")->fetchColumn();
+        $stmt = $pdo->prepare("SELECT butce FROM takimlar WHERE id=? LIMIT 1");
+        $stmt->execute([$kullanici_takim_id]);
+        $transfer_butce = (int)$stmt->fetchColumn();
     } catch (Throwable $e) {}
 }
 

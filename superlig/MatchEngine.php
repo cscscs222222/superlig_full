@@ -244,7 +244,10 @@ class MatchEngine {
 
     // --- 3. AKILLI MAÇ OLAYI (GOL, KART, ASİST, VAR, KALECİ KURTARIŞI) ÜRETİCİSİ ---
     public function mac_olay_uret($takim_id, $skor) {
-        $tbl_oyuncular = $this->prefix . 'oyuncular';
+        // Validate prefix against known league prefixes to prevent SQL injection
+        $allowed_prefixes = ['', 'pl_', 'es_', 'de_', 'it_', 'fr_', 'pt_', 'cl_', 'uel_', 'uecl_'];
+        $safe_prefix = in_array($this->prefix, $allowed_prefixes, true) ? $this->prefix : '';
+        $tbl_oyuncular = $safe_prefix . 'oyuncular';
 
         $oyuncular = $this->pdo->prepare("SELECT isim, mevki FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1");
         $oyuncular->execute([$takim_id]);
