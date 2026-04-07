@@ -244,7 +244,10 @@ class MatchEngine {
 
     // --- 3. AKILLI MAÇ OLAYI (GOL, KART, ASİST, VAR, KALECİ KURTARIŞI) ÜRETİCİSİ ---
     public function mac_olay_uret($takim_id, $skor) {
-        $tbl_oyuncular = $this->prefix . 'oyuncular';
+        // Validate prefix against known league prefixes to prevent SQL injection
+        $allowed_prefixes = ['', 'pl_', 'es_', 'de_', 'it_', 'fr_', 'pt_', 'cl_', 'uel_', 'uecl_'];
+        $safe_prefix = in_array($this->prefix, $allowed_prefixes, true) ? $this->prefix : '';
+        $tbl_oyuncular = $safe_prefix . 'oyuncular';
 
         $oyuncular = $this->pdo->prepare("SELECT isim, mevki FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1");
         $oyuncular->execute([$takim_id]);
@@ -336,6 +339,33 @@ class MatchEngine {
                 $stmt_k->execute([$kurtaris_say, $takim_id, $kaleci['isim']]);
             } catch (Throwable $e) { /* kurtaris sütunu henüz yoksa sessizce geç */ }
         }
+
+        // --- BALLON D'OR / ALTIN AYAKKABI: SEZON GOL VE ASİST SAYAÇLARINI GÜNCELLE ---
+        // VAR sonrası onaylanan golleri say ve oyuncu bazında topla
+        $gol_sayac   = [];
+        $asist_sayac = [];
+        foreach ($olaylar as $olay) {
+            if ($olay['tip'] === 'gol') {
+                $gol_sayac[$olay['oyuncu']] = ($gol_sayac[$olay['oyuncu']] ?? 0) + 1;
+                if (!empty($olay['asist']) && $olay['asist'] !== '-') {
+                    $asist_sayac[$olay['asist']] = ($asist_sayac[$olay['asist']] ?? 0) + 1;
+                }
+            }
+        }
+        try {
+            $stmt_g = $this->pdo->prepare(
+                "UPDATE {$tbl_oyuncular} SET sezon_gol = sezon_gol + ? WHERE takim_id = ? AND isim = ? LIMIT 1"
+            );
+            foreach ($gol_sayac as $isim => $adet) {
+                $stmt_g->execute([$adet, $takim_id, $isim]);
+            }
+            $stmt_a = $this->pdo->prepare(
+                "UPDATE {$tbl_oyuncular} SET sezon_asist = sezon_asist + ? WHERE takim_id = ? AND isim = ? LIMIT 1"
+            );
+            foreach ($asist_sayac as $isim => $adet) {
+                $stmt_a->execute([$adet, $takim_id, $isim]);
+            }
+        } catch (Throwable $e) { /* sezon_gol/sezon_asist sütunları henüz yoksa sessizce geç */ }
 
         return [
             'olaylar'     => json_encode($olaylar,     JSON_UNESCAPED_UNICODE),

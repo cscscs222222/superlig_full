@@ -3,6 +3,114 @@
 // ULTIMATE MANAGER - NEXT-GEN MERKEZ HUB (ULTRA MODERN GLASSMORPHISM THEME)
 // ==============================================================================
 include 'db.php';
+
+// Kullanıcı takim seçimi (oturum tabanlı)
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+// Takım seçim formu işle
+if (isset($_POST['takim_sec'])) {
+    $tid = (int)$_POST['takim_id'];
+    try {
+        $stmt = $pdo->prepare("UPDATE ayar SET kullanici_takim_id = ? WHERE id = 1");
+        $stmt->execute([$tid]);
+    } catch (Throwable $e) {}
+    $_SESSION['kullanici_takim_id'] = $tid;
+    header("Location: index.php"); exit;
+}
+
+// Mevcut kullanıcı takımını al
+$kullanici_takim_id = 0;
+$kullanici_takim    = null;
+$lig_siralama       = null;
+$sonraki_mac        = null;
+$avrupa_durum       = null;
+$transfer_butce     = 0;
+
+try {
+    $kullanici_takim_id = (int)$pdo->query("SELECT kullanici_takim_id FROM ayar LIMIT 1")->fetchColumn();
+} catch (Throwable $e) {}
+
+if ($kullanici_takim_id) {
+    // Takım bilgisi
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT t.*, a.hafta, a.sezon_yil
+               FROM takimlar t, ayar a
+              WHERE t.id = ?
+              LIMIT 1"
+        );
+        $stmt->execute([$kullanici_takim_id]);
+        $kullanici_takim = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {}
+
+    // Puan tablosundaki sıra
+    try {
+        $siralar = $pdo->query(
+            "SELECT id, ROW_NUMBER() OVER (ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC) as sira
+               FROM takimlar"
+        )->fetchAll(PDO::FETCH_KEY_PAIR);
+        $lig_siralama = $siralar[$kullanici_takim_id] ?? null;
+    } catch (Throwable $e) {
+        try {
+            $all = $pdo->query("SELECT id FROM takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC")->fetchAll(PDO::FETCH_COLUMN);
+            $lig_siralama = array_search($kullanici_takim_id, $all) + 1;
+        } catch (Throwable $e2) {}
+    }
+
+    // Sonraki maç
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT m.*, t1.takim_adi AS ev_ad, t2.takim_adi AS dep_ad
+               FROM maclar m
+               JOIN takimlar t1 ON t1.id = m.ev
+               JOIN takimlar t2 ON t2.id = m.dep
+              WHERE (m.ev = ? OR m.dep = ?)
+                AND m.ev_skor IS NULL
+              ORDER BY m.hafta ASC LIMIT 1"
+        );
+        $stmt->execute([$kullanici_takim_id, $kullanici_takim_id]);
+        $sonraki_mac = $stmt->fetch(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {}
+
+    // Şampiyonlar Ligi durumu (cl_takimlar tablosunda var mı?)
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT 'UCL' as tur FROM cl_takimlar
+              WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
+        );
+        $stmt->execute([$kullanici_takim_id]);
+        $avrupa_durum = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$avrupa_durum) {
+            $stmt2 = $pdo->prepare(
+                "SELECT 'UEL' as tur FROM uel_takimlar
+                  WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
+            );
+            $stmt2->execute([$kullanici_takim_id]);
+            $avrupa_durum = $stmt2->fetch(PDO::FETCH_ASSOC);
+        }
+        if (!$avrupa_durum) {
+            $stmt3 = $pdo->prepare(
+                "SELECT 'UECL' as tur FROM uecl_takimlar
+                  WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
+            );
+            $stmt3->execute([$kullanici_takim_id]);
+            $avrupa_durum = $stmt3->fetch(PDO::FETCH_ASSOC);
+        }
+    } catch (Throwable $e) {}
+
+    // Transfer bütçesi
+    try {
+        $stmt = $pdo->prepare("SELECT butce FROM takimlar WHERE id=? LIMIT 1");
+        $stmt->execute([$kullanici_takim_id]);
+        $transfer_butce = (int)$stmt->fetchColumn();
+    } catch (Throwable $e) {}
+}
+
+// Tüm Süper Lig takımları (seçim için)
+$tum_takimlar = [];
+try {
+    $tum_takimlar = $pdo->query("SELECT id, takim_adi, logo FROM takimlar ORDER BY takim_adi ASC")->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -205,6 +313,26 @@ include 'db.php';
             text-transform: uppercase; letter-spacing: 1px;
         }
 
+        /* --- DASHBOARD PANEL --- */
+        .dashboard-panel { max-width: 1100px; margin: 0 auto 32px; padding: 0 30px; }
+        .dashboard-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 22px; backdrop-filter: blur(20px); padding: 28px 32px; }
+        .dash-team-name { font-size: 1.8rem; font-weight: 900; margin: 0; }
+        .dash-stat { display: flex; flex-direction: column; align-items: center; text-align: center; }
+        .dash-stat-val { font-size: 2rem; font-weight: 900; color: #d4af37; font-family: 'Oswald', sans-serif; }
+        .dash-stat-lbl { font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 2px; }
+        .dash-next-match { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px 20px; margin-top: 20px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+        .dash-badge { font-size: 0.72rem; font-weight: 700; padding: 3px 12px; border-radius: 20px; }
+        .dash-badge.ucl { background: rgba(0,229,255,0.15); color: #00e5ff; border: 1px solid rgba(0,229,255,0.3); }
+        .dash-badge.uel { background: rgba(240,78,35,0.15); color: #f04e23; border: 1px solid rgba(240,78,35,0.3); }
+        .dash-badge.uecl { background: rgba(46,204,113,0.15); color: #2ecc71; border: 1px solid rgba(46,204,113,0.3); }
+        .btn-play-week { display: inline-flex; align-items: center; gap: 10px; background: linear-gradient(135deg,#1e3a5f,#2563eb); color: #fff; border: none; border-radius: 12px; padding: 12px 28px; font-size: 1rem; font-weight: 800; font-family: 'Oswald', sans-serif; letter-spacing: 1px; text-decoration: none; text-transform: uppercase; box-shadow: 0 4px 20px rgba(37,99,235,0.4); transition: all .2s; cursor: pointer; }
+        .btn-play-week:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(37,99,235,0.6); color: #fff; }
+        .btn-sim-season { display: inline-flex; align-items: center; gap: 10px; background: linear-gradient(135deg,#7f1d1d,#dc2626); color: #fff; border: none; border-radius: 12px; padding: 12px 28px; font-size: 1rem; font-weight: 800; font-family: 'Oswald', sans-serif; letter-spacing: 1px; text-decoration: none; text-transform: uppercase; box-shadow: 0 4px 20px rgba(220,38,38,0.4); transition: all .2s; cursor: pointer; }
+        .btn-sim-season:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(220,38,38,0.6); color: #fff; }
+        .team-select-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 20px; }
+        .team-select-section select { background: rgba(255,255,255,0.07); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 16px; font-size: 0.95rem; width: 100%; }
+        .team-select-section select option { background: #1a1a2e; color: #fff; }
+
     </style>
 </head>
 <body>
@@ -223,6 +351,109 @@ include 'db.php';
         <h1 class="hero-title font-oswald">SAHNEYE ÇIKMA VAKTİ</h1>
         <p class="hero-subtitle">Dünyanın en iyi futbol arenasında kulübünün kaderini belirle.</p>
     </div>
+
+    <!-- ======================= DASHBOARD PANEL ======================= -->
+    <div class="dashboard-panel">
+        <?php if ($kullanici_takim): ?>
+        <div class="dashboard-card">
+            <div class="row align-items-center g-3 mb-3">
+                <div class="col-auto">
+                    <?php if (!empty($kullanici_takim['logo'])): ?>
+                    <img src="<?= htmlspecialchars($kullanici_takim['logo']) ?>" alt="logo"
+                         style="width:60px;height:60px;object-fit:contain;filter:drop-shadow(0 0 8px rgba(255,255,255,0.3));"
+                         onerror="this.style.display='none'">
+                    <?php else: ?>
+                    <i class="fa-solid fa-shield-halved" style="font-size:3rem;color:#d4af37;"></i>
+                    <?php endif; ?>
+                </div>
+                <div class="col">
+                    <div class="dash-team-name"><?= htmlspecialchars($kullanici_takim['takim_adi']) ?></div>
+                    <div style="color:#94a3b8;font-size:0.85rem;margin-top:4px;">
+                        <?= htmlspecialchars($kullanici_takim['sezon_yil'] ?? '') ?> Sezonu
+                        <?php if ($avrupa_durum): ?>
+                        &bull;
+                        <span class="dash-badge <?= strtolower($avrupa_durum['tur']) ?>">
+                            <?= htmlspecialchars($avrupa_durum['tur']) ?>
+                        </span>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <form method="POST" style="margin:0;">
+                        <?php if (!empty($tum_takimlar)): ?>
+                        <select name="takim_id" style="background:rgba(255,255,255,0.07);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:6px 12px;font-size:0.85rem;">
+                            <?php foreach ($tum_takimlar as $t): ?>
+                            <option value="<?= $t['id'] ?>" <?= $t['id'] == $kullanici_takim_id ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($t['takim_adi']) ?>
+                            </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" name="takim_sec" style="background:rgba(212,175,55,0.15);color:#d4af37;border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:6px 14px;font-size:0.82rem;cursor:pointer;margin-left:6px;">Değiştir</button>
+                        <?php endif; ?>
+                    </form>
+                </div>
+            </div>
+            <!-- Stat Chips -->
+            <div class="row g-3 mb-3">
+                <div class="col-6 col-md-3"><div class="dash-stat"><div class="dash-stat-val"><?= $lig_siralama ? $lig_siralama . '.' : '—' ?></div><div class="dash-stat-lbl">Lig Sırası</div></div></div>
+                <div class="col-6 col-md-3"><div class="dash-stat"><div class="dash-stat-val"><?= (int)($kullanici_takim['puan'] ?? 0) ?></div><div class="dash-stat-lbl">Puan</div></div></div>
+                <div class="col-6 col-md-3"><div class="dash-stat"><div class="dash-stat-val"><?= number_format($transfer_butce / 1e6, 1) ?>M€</div><div class="dash-stat-lbl">Transfer Bütçesi</div></div></div>
+                <div class="col-6 col-md-3"><div class="dash-stat"><div class="dash-stat-val"><?= htmlspecialchars($kullanici_takim['hafta'] ?? '—') ?></div><div class="dash-stat-lbl">Mevcut Hafta</div></div></div>
+            </div>
+            <!-- Sonraki Maç -->
+            <?php if ($sonraki_mac): ?>
+            <div class="dash-next-match">
+                <div style="font-size:0.75rem;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;">Sonraki Maç</div>
+                <div style="font-weight:700;font-size:1.05rem;">
+                    <?= htmlspecialchars($sonraki_mac['ev_ad']) ?>
+                    <span style="color:#d4af37;margin:0 8px;">VS</span>
+                    <?= htmlspecialchars($sonraki_mac['dep_ad']) ?>
+                </div>
+                <div style="color:#94a3b8;font-size:0.8rem;">Hafta <?= $sonraki_mac['hafta'] ?></div>
+            </div>
+            <?php endif; ?>
+            <!-- Aksiyon Butonları -->
+            <div class="d-flex gap-3 flex-wrap mt-4">
+                <a href="play_week.php" class="btn-play-week">
+                    <i class="fa-solid fa-play"></i> GLOBAL HAFTAYI OYNA
+                </a>
+                <form method="POST" action="play_week.php" style="margin:0;" onsubmit="return confirm('Tüm sezon simüle edilecek! Devam?');">
+                    <button type="submit" name="tum_sezonu_simule" class="btn-sim-season">
+                        <i class="fa-solid fa-forward-fast"></i> TÜM SEZONU SİMÜLE ET
+                    </button>
+                </form>
+                <a href="super_lig/superlig.php" class="btn-play-week" style="background:linear-gradient(135deg,#7f1d48,#e11d48);">
+                    <i class="fa-solid fa-futbol"></i> KENDİ MAÇIMI OYNA
+                </a>
+            </div>
+        </div>
+        <?php else: ?>
+        <!-- TAKıM SEÇİMİ -->
+        <div class="dashboard-card text-center">
+            <div style="font-size:3rem;margin-bottom:12px;">⚽</div>
+            <h2 class="font-oswald" style="font-size:1.8rem;margin-bottom:6px;">KARİYERİNİZİ BAŞLATIN</h2>
+            <p style="color:#94a3b8;margin-bottom:20px;">Yönetmek istediğiniz takımı seçin ve menajerlik kariyerinize başlayın.</p>
+            <?php if (!empty($tum_takimlar)): ?>
+            <form method="POST" class="team-select-section mx-auto" style="max-width:400px;">
+                <select name="takim_id" class="mb-3">
+                    <option value="">— Takım Seç —</option>
+                    <?php foreach ($tum_takimlar as $t): ?>
+                    <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['takim_adi']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" name="takim_sec" class="btn-play-week w-100 justify-content-center" style="margin-top:12px;">
+                    <i class="fa-solid fa-check"></i> TAKIM SEÇ VE BAŞLA
+                </button>
+            </form>
+            <?php else: ?>
+            <a href="super_lig/sl_kurulum.php" class="btn-play-week">
+                <i class="fa-solid fa-database me-2"></i>Önce Süper Lig'i Kur
+            </a>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+    </div>
+    <!-- ======================= /DASHBOARD PANEL ====================== -->
 
     <div class="container-fluid">
         <div class="game-grid">
@@ -401,6 +632,20 @@ include 'db.php';
                     <h2 class="card-title">SÜPER KUPA</h2>
                     <div class="card-desc">UCL şampiyonu × UEL şampiyonu — Sezonun açılış maçı!</div>
                     <div class="card-cta"><i class="fa-solid fa-play"></i> OYNA</div>
+                </div>
+            </a>
+
+            <!-- GLOBAL HAFTA OYNAT -->
+            <a href="play_week.php" class="mode-card" style="--card-color:#2563eb;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-forward-fast" style="font-size:2.8rem; color:#2563eb;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">GLOBAL HAFTA OYNAT</h2>
+                    <div class="card-desc">Tüm ligler aynı anda ilerler. Sezonun tamamını hızla simüle et!</div>
+                    <div class="card-cta" style="color:#2563eb;"><i class="fa-solid fa-play"></i> GİT</div>
                 </div>
             </a>
 
