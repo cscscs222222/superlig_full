@@ -502,11 +502,81 @@ include 'db.php';
                 </div>
             </a>
 
+            <!-- FAZ 6: BALLON D'OR -->
+            <a href="ballon_dor.php" class="mode-card" style="--card-color:#d4af37;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-award" style="font-size:2.8rem; color:#d4af37;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">BALLON D'OR</h2>
+                    <div class="card-desc">Avrupa'nın en iyi oyuncusunu seç. Tüm ligler karşılaştırılır!</div>
+                    <div class="card-cta" style="color:#d4af37;"><i class="fa-solid fa-trophy"></i> GİT</div>
+                </div>
+            </a>
+
+            <!-- FAZ 6: ALTIN AYAKKABI -->
+            <a href="altin_ayakkabi.php" class="mode-card" style="--card-color:#10b981;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-shoe-prints" style="font-size:2.8rem; color:#10b981;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">ALTIN AYAKKABI</h2>
+                    <div class="card-desc">Tüm Avrupa'nın golcü krallığı — Lig katsayısıyla ağırlıklı sıralama!</div>
+                    <div class="card-cta" style="color:#10b981;"><i class="fa-solid fa-futbol"></i> GİT</div>
+                </div>
+            </a>
+
+            <!-- FAZ 6: ŞÖHRETLER MÜZESİ -->
+            <a href="hall_of_fame.php" class="mode-card" style="--card-color:#8b5cf6;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-monument" style="font-size:2.8rem; color:#8b5cf6;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">ŞÖHRETLER MÜZESİ</h2>
+                    <div class="card-desc">200+ maç veya 100+ gol yapan efsaneleri kulüp tarihine kazı!</div>
+                    <div class="card-cta" style="color:#8b5cf6;"><i class="fa-solid fa-star"></i> GİT</div>
+                </div>
+            </a>
+
+            <!-- FAZ 6: TOTW & TOTS -->
+            <a href="totw.php" class="mode-card" style="--card-color:#3b82f6;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-users" style="font-size:2.8rem; color:#3b82f6;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">HAFTANIN & SEZONUN 11'İ</h2>
+                    <div class="card-desc">TOTW & TOTS — Maç puanlarıyla en iyi 11'i seç ve kaydet!</div>
+                    <div class="card-cta" style="color:#3b82f6;"><i class="fa-solid fa-wand-magic-sparkles"></i> GİT</div>
+                </div>
+            </a>
+
+            <!-- FAZ 6: DÜNYA KUPASI -->
+            <a href="dunya_kupasi.php" class="mode-card" style="--card-color:#06b6d4;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-earth-americas" style="font-size:2.8rem; color:#06b6d4;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">DÜNYA KUPASI</h2>
+                    <div class="card-desc">Her 4 sezonda bir! Milli takımını yönet ve Dünya Kupası'nı kazan!</div>
+                    <div class="card-cta" style="color:#06b6d4;"><i class="fa-solid fa-globe"></i> GİT</div>
+                </div>
+            </a>
+
         </div>
     </div>
 
     <div class="footer-note font-oswald">
-        V5.0.0 PHASE 5 — CEO KULÜP YÖNETİMİ AKTİF • FFP / BİLET / SPONSORLUK / FORMA / KOVULMA / KARİYER
+        V6.0.0 PHASE 6 — GÖRKEMLİ ÖDÜLLER AKTİF • BALLON D'OR / ALTIN AYAKKABI / HALL OF FAME / TOTW / DÜNYA KUPASI
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
