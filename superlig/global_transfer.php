@@ -87,13 +87,22 @@ if (isset($_POST['satin_al'])) {
                 $alici_takim = $stmt_takim->fetch(PDO::FETCH_ASSOC);
 
                 if ($hedef_oyuncu && $alici_takim) {
-                    $fiyat = (int)$hedef_oyuncu['fiyat'];
-                    $eski_takim_id = (int)$hedef_oyuncu['takim_id'];
+                    $eski_takim_id  = (int)$hedef_oyuncu['takim_id'];
+                    $release_clause = isset($hedef_oyuncu['release_clause']) && $hedef_oyuncu['release_clause'] > 0
+                                      ? (int)$hedef_oyuncu['release_clause'] : null;
+
+                    // --- FAZ 4: SERBEST KALMA BEDELİ MANTIGI ---
+                    // Eğer oyuncunun release clause'u varsa ve alıcı bütçesi >= clause ise
+                    // satan kulübün ret hakkı bypass edilir; transfer direkt gerçekleşir.
+                    $release_clause_aktif = $release_clause !== null && $alici_takim['butce'] >= $release_clause;
+
+                    // Transfer fiyatı: release clause aktifse clause değeri, değilse normal fiyat
+                    $fiyat = $release_clause_aktif ? $release_clause : (int)$hedef_oyuncu['fiyat'];
 
                     if ($eski_takim_id == $hedef_takim_id && $kaynak_db == $hedef_db) {
                         $pdo->rollBack();
                         $mesaj = "Bu oyuncu zaten takımınızda!"; $mesaj_tipi = "warning";
-                    } elseif ($alici_takim['butce'] >= $fiyat) {
+                    } elseif ($release_clause_aktif || $alici_takim['butce'] >= $fiyat) {
 
                         // Bütçe Güncelleme
                         $pdo->prepare("UPDATE $tgt_t_tbl SET butce = butce - ? WHERE id = ?")->execute([$fiyat, $hedef_takim_id]);
@@ -108,7 +117,11 @@ if (isset($_POST['satin_al'])) {
 
                         $pdo->commit();
 
-                        $mesaj = "BOMBA TRANSFER! " . htmlspecialchars($hedef_oyuncu['isim']) . " resmen " . htmlspecialchars($alici_takim['takim_adi']) . " kadrosuna katıldı!";
+                        if ($release_clause_aktif) {
+                            $mesaj = "🔓 SERBEST KALMA BEDELİ AKTİVE! " . htmlspecialchars($hedef_oyuncu['isim']) . " " . htmlspecialchars($alici_takim['takim_adi']) . " kadrosuna zorla katıldı! (Clause: " . paraFormatla($release_clause) . ")";
+                        } else {
+                            $mesaj = "BOMBA TRANSFER! " . htmlspecialchars($hedef_oyuncu['isim']) . " resmen " . htmlspecialchars($alici_takim['takim_adi']) . " kadrosuna katıldı!";
+                        }
                         $mesaj_tipi = "success";
 
                         // Güncel bütçeyi yansıtmak için diziyi de güncelle
@@ -117,7 +130,8 @@ if (isset($_POST['satin_al'])) {
                         }
                     } else {
                         $pdo->rollBack();
-                        $mesaj = "Finansal Uyarı! " . htmlspecialchars($alici_takim['takim_adi']) . " kasasında yeterli bütçe yok.";
+                        $bilgi = $release_clause ? " (Clause: " . paraFormatla($release_clause) . " — bütçeniz yeterli olursa bypass edilir)" : "";
+                        $mesaj = "Finansal Uyarı! " . htmlspecialchars($alici_takim['takim_adi']) . " kasasında yeterli bütçe yok.$bilgi";
                         $mesaj_tipi = "danger";
                     }
                 } else {
@@ -136,56 +150,80 @@ $tum_oyuncular = [];
 
 // Süper Lig Oyuncuları
 try {
-    $tr_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'tr' AS kaynak, t.takim_adi, t.logo 
+    $tr_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig,
+                                        COALESCE(o.sozlesme_ay, 36) AS sozlesme_ay,
+                                        o.release_clause,
+                                        'tr' AS kaynak, t.takim_adi, t.logo 
                                  FROM oyuncular o JOIN takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $tr_oyuncular);
 } catch(Throwable $e) {}
 
 // Şampiyonlar Ligi Oyuncuları
 try {
-    $cl_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'cl' AS kaynak, t.takim_adi, t.logo 
+    $cl_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig,
+                                        COALESCE(o.sozlesme_ay, 36) AS sozlesme_ay,
+                                        o.release_clause,
+                                        'cl' AS kaynak, t.takim_adi, t.logo 
                                  FROM cl_oyuncular o JOIN cl_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $cl_oyuncular);
 } catch(Throwable $e) {}
 
 // Premier Lig Oyuncuları
 try {
-    $pl_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'pl' AS kaynak, t.takim_adi, t.logo 
+    $pl_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig,
+                                        COALESCE(o.sozlesme_ay, 36) AS sozlesme_ay,
+                                        o.release_clause,
+                                        'pl' AS kaynak, t.takim_adi, t.logo 
                                  FROM pl_oyuncular o JOIN pl_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $pl_oyuncular);
 } catch(Throwable $e) {}
 
 // La Liga Oyuncuları
 try {
-    $es_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'es' AS kaynak, t.takim_adi, t.logo 
+    $es_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig,
+                                        COALESCE(o.sozlesme_ay, 36) AS sozlesme_ay,
+                                        o.release_clause,
+                                        'es' AS kaynak, t.takim_adi, t.logo 
                                  FROM es_oyuncular o JOIN es_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $es_oyuncular);
 } catch(Throwable $e) {}
 
 // Bundesliga Oyuncuları
 try {
-    $de_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'de' AS kaynak, t.takim_adi, t.logo 
+    $de_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig,
+                                        COALESCE(o.sozlesme_ay, 36) AS sozlesme_ay,
+                                        o.release_clause,
+                                        'de' AS kaynak, t.takim_adi, t.logo 
                                  FROM de_oyuncular o JOIN de_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $de_oyuncular);
 } catch(Throwable $e) {}
 
 // Ligue 1 Oyuncuları
 try {
-    $fr_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'fr' AS kaynak, t.takim_adi, t.logo 
+    $fr_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig,
+                                        COALESCE(o.sozlesme_ay, 36) AS sozlesme_ay,
+                                        o.release_clause,
+                                        'fr' AS kaynak, t.takim_adi, t.logo 
                                  FROM fr_oyuncular o JOIN fr_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $fr_oyuncular);
 } catch(Throwable $e) {}
 
 // Serie A Oyuncuları
 try {
-    $it_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'it' AS kaynak, t.takim_adi, t.logo 
+    $it_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig,
+                                        COALESCE(o.sozlesme_ay, 36) AS sozlesme_ay,
+                                        o.release_clause,
+                                        'it' AS kaynak, t.takim_adi, t.logo 
                                  FROM it_oyuncular o JOIN it_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $it_oyuncular);
 } catch(Throwable $e) {}
 
 // Liga NOS Oyuncuları
 try {
-    $pt_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig, 'pt' AS kaynak, t.takim_adi, t.logo 
+    $pt_oyuncular = $pdo->query("SELECT o.id, o.takim_id, o.isim, o.mevki, o.ovr, o.yas, o.fiyat, o.lig,
+                                        COALESCE(o.sozlesme_ay, 36) AS sozlesme_ay,
+                                        o.release_clause,
+                                        'pt' AS kaynak, t.takim_adi, t.logo 
                                  FROM pt_oyuncular o JOIN pt_takimlar t ON o.takim_id = t.id")->fetchAll(PDO::FETCH_ASSOC);
     $tum_oyuncular = array_merge($tum_oyuncular, $pt_oyuncular);
 } catch(Throwable $e) {}
@@ -300,7 +338,19 @@ function paraFormatla($sayi) {
     <nav class="pro-navbar">
         <a href="index.php" class="nav-brand"><i class="fa-solid fa-globe"></i> <span class="font-oswald">GLOBAL TRANSFER HUB</span></a>
         
-        <div class="d-flex gap-3">
+        <div class="d-flex gap-3 flex-wrap">
+            <a href="deadline_day.php" class="btn-action-outline" style="border-color:#ef4444; color:#ef4444;">
+                <i class="fa-solid fa-clock-rotate-left"></i> Deadline Day
+            </a>
+            <a href="scout.php" class="btn-action-outline" style="border-color:#10b981; color:#10b981;">
+                <i class="fa-solid fa-binoculars"></i> Scout Ağı
+            </a>
+            <a href="serbest_oyuncular.php" class="btn-action-outline" style="border-color:#8b5cf6; color:#8b5cf6;">
+                <i class="fa-solid fa-handshake"></i> Bosman
+            </a>
+            <a href="kiralik.php" class="btn-action-outline" style="border-color:#3b82f6; color:#3b82f6;">
+                <i class="fa-solid fa-arrows-rotate"></i> Kiralık
+            </a>
             <a href="index.php" class="btn-action-outline">
                 <i class="fa-solid fa-house"></i> Ana Merkeze Dön
             </a>
@@ -356,6 +406,7 @@ function paraFormatla($sayi) {
                             <th>Kulüp</th>
                             <th>OVR</th>
                             <th class="text-end">Piyasa Değeri</th>
+                            <th class="text-center">Sözleşme / Clause</th>
                             <th class="text-center" style="width:300px;">Hangi Takımına Alacaksın?</th>
                         </tr>
                     </thead>
@@ -373,6 +424,21 @@ function paraFormatla($sayi) {
                             <td><span class="ovr-box"><?= $o['ovr'] ?></span></td>
                             <td class="text-end font-oswald fs-5" style="color: var(--gl-gold); letter-spacing:0.5px;"><?= paraFormatla($o['fiyat']) ?></td>
                             <td class="text-center">
+                                <?php
+                                    $soz_ay  = $o['sozlesme_ay'] ?? 36;
+                                    $clause  = $o['release_clause'] ?? null;
+                                    $soz_clr = $soz_ay <= 6 ? '#ef4444' : ($soz_ay <= 12 ? '#f59e0b' : '#888');
+                                ?>
+                                <div style="font-size:0.75rem; color:<?= $soz_clr ?>; font-weight:600;">
+                                    <i class="fa-solid fa-clock me-1"></i><?= $soz_ay ?> Ay
+                                </div>
+                                <?php if (!empty($clause) && $clause > 0): ?>
+                                <div style="font-size:0.7rem; color:#a855f7; font-weight:700; margin-top:3px;" title="Serbest Kalma Bedeli: Bütçen yeterliyse doğrudan transfer!">
+                                    🔓 <?= paraFormatla($clause) ?>
+                                </div>
+                                <?php endif; ?>
+                            </td>
+                            <td class="text-center">
                                 <form method="POST" class="d-flex gap-2 justify-content-center">
                                     <input type="hidden" name="oyuncu_id" value="<?= $o['id'] ?>">
                                     <input type="hidden" name="kaynak_db" value="<?= $o['kaynak'] ?>">
@@ -383,8 +449,8 @@ function paraFormatla($sayi) {
                                             // Kendi oyuncunu kendine alma
                                             if($o['kaynak'] == $bt['kaynak'] && $o['takim_id'] == $bt['id']) continue;
                                         ?>
-                                            <option value="<?= $bt['kaynak'] . '_' . $bt['id'] ?>" <?= $bt['butce'] < $o['fiyat'] ? 'disabled' : '' ?>>
-                                                <?= htmlspecialchars($bt['takim_adi']) ?> (<?= $bt['butce'] < $o['fiyat'] ? 'Bütçe Yetersiz' : 'Uygun' ?>)
+                                            <option value="<?= $bt['kaynak'] . '_' . $bt['id'] ?>" <?= $bt['butce'] < $o['fiyat'] && (empty($o['release_clause']) || $bt['butce'] < $o['release_clause']) ? 'disabled' : '' ?>>
+                                                <?= htmlspecialchars($bt['takim_adi']) ?> (<?= $bt['butce'] < $o['fiyat'] && (empty($o['release_clause']) || $bt['butce'] < $o['release_clause']) ? 'Bütçe Yetersiz' : 'Uygun' ?>)
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -394,7 +460,7 @@ function paraFormatla($sayi) {
                         </tr>
                         <?php endforeach; ?>
                         <?php if(empty($pazardaki_oyuncular)): ?>
-                            <tr><td colspan="6" class="text-center py-5 text-muted font-oswald fs-5">Dünya pazarında oyuncu bulunamadı. Lütfen liglere girip takım seçerek veritabanını tetikleyin.</td></tr>
+                            <tr><td colspan="7" class="text-center py-5 text-muted font-oswald fs-5">Dünya pazarında oyuncu bulunamadı. Lütfen liglere girip takım seçerek veritabanını tetikleyin.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

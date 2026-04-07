@@ -418,11 +418,67 @@ include 'db.php';
                 </div>
             </a>
 
+            <!-- FAZ 4: DEADLINE DAY -->
+            <a href="deadline_day.php" class="mode-card" style="--card-color:#ef4444;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-clock-rotate-left" style="font-size:2.8rem; color:#ef4444;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">DEADLINE DAY</h2>
+                    <div class="card-desc">Transfer penceresinin son 24 saati! Panik tekliflerini yönet.</div>
+                    <div class="card-cta" style="color:#ef4444;"><i class="fa-solid fa-bolt"></i> GİT</div>
+                </div>
+            </a>
+
+            <!-- FAZ 4: SCOUT AĞI -->
+            <a href="scout.php" class="mode-card" style="--card-color:#10b981;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-binoculars" style="font-size:2.8rem; color:#10b981;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">SCOUT AĞI</h2>
+                    <div class="card-desc">Brezilya, Afrika, Balkanlar'a gözlemci gönder. Wonderkid keşfet!</div>
+                    <div class="card-cta" style="color:#10b981;"><i class="fa-solid fa-plane-departure"></i> GİT</div>
+                </div>
+            </a>
+
+            <!-- FAZ 4: BOSMAN / SERBEST OYUNCULAR -->
+            <a href="serbest_oyuncular.php" class="mode-card" style="--card-color:#8b5cf6;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-handshake" style="font-size:2.8rem; color:#8b5cf6;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">SERBEST OYUNCULAR</h2>
+                    <div class="card-desc">Sözleşmesi biten yıldızları bonservis ödemeden kadrana kat!</div>
+                    <div class="card-cta" style="color:#8b5cf6;"><i class="fa-solid fa-file-contract"></i> GİT</div>
+                </div>
+            </a>
+
+            <!-- FAZ 4: KİRALIK SİSTEMİ -->
+            <a href="kiralik.php" class="mode-card" style="--card-color:#3b82f6;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-arrows-rotate" style="font-size:2.8rem; color:#3b82f6;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">KİRALIK SİSTEMİ</h2>
+                    <div class="card-desc">Genç oyuncuları kiralık gönder, maaş kazan, gelişimlerini hızlandır.</div>
+                    <div class="card-cta" style="color:#3b82f6;"><i class="fa-solid fa-arrow-right-arrow-left"></i> GİT</div>
+                </div>
+            </a>
+
         </div>
     </div>
 
     <div class="footer-note font-oswald">
-        V2.0.0 PHASE 1 — UEFA EKOSİSTEMİ AKTİF • UCL / UEL / UECL / SÜPER KUPA
+        V4.0.0 PHASE 4 — KÜRESEL TRANSFER BORSASI AKTİF • DEADLINE DAY / SCOUT / BOSMAN / KİRALIK / RELEASE CLAUSE
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
