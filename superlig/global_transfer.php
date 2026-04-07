@@ -7,6 +7,11 @@ include 'db.php';
 $mesaj = "";
 $mesaj_tipi = "";
 
+// --- FAZ 5: Süperstar Forma Satış Geliri Hesaplayıcı ---
+function superstar_merch_geliri(int $ovr): int {
+    return 2000000 + ($ovr - 90) * 500000;
+}
+
 // 1. KULLANICININ YÖNETTİĞİ TAKIMLARI GÜVENLİ ŞEKİLDE ÇEK
 $benim_takimlarim = [];
 
@@ -117,10 +122,38 @@ if (isset($_POST['satin_al'])) {
 
                         $pdo->commit();
 
+                        // --- FAZ 5: SÜPERSTAR TRANSFER → MASIF FORMA SATIŞI PATLAMASI ---
+                        // 90+ OVR oyuncu transfer edildiğinde o haftaya özel büyük forma geliri kaydedilir.
+                        if ((int)$hedef_oyuncu['ovr'] >= 90) {
+                            try {
+                                $guncel_hafta_val = 1;
+                                $guncel_sezon_val = 2025;
+                                try { $guncel_hafta_val = (int)$pdo->query("SELECT hafta FROM ayar LIMIT 1")->fetchColumn(); } catch (Throwable $e2) {}
+                                try { $guncel_sezon_val = (int)$pdo->query("SELECT sezon_yil FROM ayar LIMIT 1")->fetchColumn(); } catch (Throwable $e2) {}
+
+                                $superstar_gelir = superstar_merch_geliri((int)$hedef_oyuncu['ovr']);
+                                $pdo->prepare("INSERT INTO forma_satis_log
+                                    (takim_id, takim_lig, sezon_yil, hafta, gelir, tetikleyen, aciklama)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?)"
+                                )->execute([
+                                    $hedef_takim_id, $hedef_db,
+                                    $guncel_sezon_val, $guncel_hafta_val,
+                                    $superstar_gelir,
+                                    $hedef_oyuncu['isim'],
+                                    'Süperstar transferi forma satış patlaması! OVR: ' . $hedef_oyuncu['ovr']
+                                ]);
+                                $pdo->prepare("UPDATE $tgt_t_tbl SET butce = butce + ? WHERE id = ?"
+                                )->execute([$superstar_gelir, $hedef_takim_id]);
+                            } catch (Throwable $e2) {}
+                        }
+
                         if ($release_clause_aktif) {
                             $mesaj = "🔓 SERBEST KALMA BEDELİ AKTİVE! " . htmlspecialchars($hedef_oyuncu['isim']) . " " . htmlspecialchars($alici_takim['takim_adi']) . " kadrosuna zorla katıldı! (Clause: " . paraFormatla($release_clause) . ")";
                         } else {
                             $mesaj = "BOMBA TRANSFER! " . htmlspecialchars($hedef_oyuncu['isim']) . " resmen " . htmlspecialchars($alici_takim['takim_adi']) . " kadrosuna katıldı!";
+                        }
+                        if ((int)$hedef_oyuncu['ovr'] >= 90) {
+                            $mesaj .= " 👕 Süperstar etkisi: +" . number_format(superstar_merch_geliri((int)$hedef_oyuncu['ovr']) / 1000000, 1) . "M€ forma satış geliri kasaya eklendi!";
                         }
                         $mesaj_tipi = "success";
 
