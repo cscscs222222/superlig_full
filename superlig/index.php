@@ -7,13 +7,41 @@ include 'db.php';
 // Kullanıcı takim seçimi (oturum tabanlı)
 if (session_status() === PHP_SESSION_NONE) session_start();
 
+// Tüm lig ayar tablolarına gecen_sezon_sampiyon sütunu ekle (eğer yoksa)
+$ayar_tablosu_migrasyonlari = [
+    'ayar'     => 'Galatasaray',
+    'pl_ayar'  => 'Manchester City',
+    'es_ayar'  => 'Real Madrid',
+    'de_ayar'  => 'Bayern München',
+    'it_ayar'  => 'Inter Milan',
+    'fr_ayar'  => 'Paris Saint-Germain',
+    'pt_ayar'  => 'Sporting CP',
+];
+foreach ($ayar_tablosu_migrasyonlari as $tbl => $default_sampiyon) {
+    try {
+        if ($pdo->query("SHOW COLUMNS FROM `$tbl` LIKE 'gecen_sezon_sampiyon'")->rowCount() == 0) {
+            $pdo->exec("ALTER TABLE `$tbl` ADD `gecen_sezon_sampiyon` VARCHAR(100) DEFAULT " . $pdo->quote($default_sampiyon));
+        }
+    } catch (Throwable $e) {}
+}
+
 // Takım seçim formu işle
 if (isset($_POST['takim_sec'])) {
-    $tid = (int)$_POST['takim_id'];
-    try {
-        $stmt = $pdo->prepare("UPDATE ayar SET kullanici_takim_id = ? WHERE id = 1");
-        $stmt->execute([$tid]);
-    } catch (Throwable $e) {}
+    // Format: "tablo:id" (e.g. "fr_takimlar:583")
+    $raw = $_POST['takim_id'] ?? '';
+    $parts = explode(':', $raw, 2);
+    $tablo_secilen = $parts[0] ?? 'takimlar';
+    $tid = (int)($parts[1] ?? $raw);
+
+    // Güvenli tablo listesi
+    $allowed_takimlar = ['takimlar','pl_takimlar','es_takimlar','de_takimlar','it_takimlar','fr_takimlar','pt_takimlar'];
+    if (!in_array($tablo_secilen, $allowed_takimlar, true)) { $tablo_secilen = 'takimlar'; }
+
+    // Süper Lig ayar tablosuna da yaz (geriye dönük uyumluluk)
+    try { $pdo->prepare("UPDATE ayar SET kullanici_takim_id = ? WHERE id = 1")->execute([$tid]); } catch (Throwable $e) {}
+
+    // Oturuma kaydet
+    $_SESSION['kullanici_takim_tablo'] = $tablo_secilen;
     $_SESSION['kullanici_takim_id'] = $tid;
     header("Location: index.php"); exit;
 }
@@ -21,21 +49,44 @@ if (isset($_POST['takim_sec'])) {
 // Mevcut kullanıcı takımını al
 $kullanici_takim_id = 0;
 $kullanici_takim    = null;
+$kullanici_tablo    = 'takimlar';
 $lig_siralama       = null;
 $sonraki_mac        = null;
 $avrupa_durum       = null;
 $transfer_butce     = 0;
 
-try {
-    $kullanici_takim_id = (int)$pdo->query("SELECT kullanici_takim_id FROM ayar LIMIT 1")->fetchColumn();
-} catch (Throwable $e) {}
+// Önce session'dan, yoksa Süper Lig ayar tablosundan al
+if (!empty($_SESSION['kullanici_takim_id'])) {
+    $kullanici_takim_id = (int)$_SESSION['kullanici_takim_id'];
+    $allowed_takimlar_sess = ['takimlar','pl_takimlar','es_takimlar','de_takimlar','it_takimlar','fr_takimlar','pt_takimlar'];
+    $kullanici_tablo = in_array($_SESSION['kullanici_takim_tablo'] ?? '', $allowed_takimlar_sess, true)
+        ? $_SESSION['kullanici_takim_tablo']
+        : 'takimlar';
+} else {
+    try {
+        $kullanici_takim_id = (int)$pdo->query("SELECT kullanici_takim_id FROM ayar LIMIT 1")->fetchColumn();
+    } catch (Throwable $e) {}
+}
+
+// Lig-spesifik ayar/maç tablosu mapping
+$lig_tablo_map = [
+    'takimlar'    => ['ayar' => 'ayar',     'maclar' => 'maclar'],
+    'pl_takimlar' => ['ayar' => 'pl_ayar',  'maclar' => 'pl_maclar'],
+    'es_takimlar' => ['ayar' => 'es_ayar',  'maclar' => 'es_maclar'],
+    'de_takimlar' => ['ayar' => 'de_ayar',  'maclar' => 'de_maclar'],
+    'it_takimlar' => ['ayar' => 'it_ayar',  'maclar' => 'it_maclar'],
+    'fr_takimlar' => ['ayar' => 'fr_ayar',  'maclar' => 'fr_maclar'],
+    'pt_takimlar' => ['ayar' => 'pt_ayar',  'maclar' => 'pt_maclar'],
+];
+$kullanici_ayar_tbl = $lig_tablo_map[$kullanici_tablo]['ayar'] ?? 'ayar';
+$kullanici_maclar_tbl = $lig_tablo_map[$kullanici_tablo]['maclar'] ?? 'maclar';
 
 if ($kullanici_takim_id) {
-    // Takım bilgisi
+    // Takım bilgisi (doğru tablodan)
     try {
         $stmt = $pdo->prepare(
             "SELECT t.*, a.hafta, a.sezon_yil
-               FROM takimlar t, ayar a
+               FROM `$kullanici_tablo` t, `$kullanici_ayar_tbl` a
               WHERE t.id = ?
               LIMIT 1"
         );
@@ -47,12 +98,12 @@ if ($kullanici_takim_id) {
     try {
         $siralar = $pdo->query(
             "SELECT id, ROW_NUMBER() OVER (ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC) as sira
-               FROM takimlar"
+               FROM `$kullanici_tablo`"
         )->fetchAll(PDO::FETCH_KEY_PAIR);
         $lig_siralama = $siralar[$kullanici_takim_id] ?? null;
     } catch (Throwable $e) {
         try {
-            $all = $pdo->query("SELECT id FROM takimlar ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC")->fetchAll(PDO::FETCH_COLUMN);
+            $all = $pdo->query("SELECT id FROM `$kullanici_tablo` ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC")->fetchAll(PDO::FETCH_COLUMN);
             $lig_siralama = array_search($kullanici_takim_id, $all) + 1;
         } catch (Throwable $e2) {}
     }
@@ -61,9 +112,9 @@ if ($kullanici_takim_id) {
     try {
         $stmt = $pdo->prepare(
             "SELECT m.*, t1.takim_adi AS ev_ad, t2.takim_adi AS dep_ad
-               FROM maclar m
-               JOIN takimlar t1 ON t1.id = m.ev
-               JOIN takimlar t2 ON t2.id = m.dep
+               FROM `$kullanici_maclar_tbl` m
+               JOIN `$kullanici_tablo` t1 ON t1.id = m.ev
+               JOIN `$kullanici_tablo` t2 ON t2.id = m.dep
               WHERE (m.ev = ? OR m.dep = ?)
                 AND m.ev_skor IS NULL
               ORDER BY m.hafta ASC LIMIT 1"
@@ -72,45 +123,63 @@ if ($kullanici_takim_id) {
         $sonraki_mac = $stmt->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $e) {}
 
-    // Şampiyonlar Ligi durumu (cl_takimlar tablosunda var mı?)
+    // Şampiyonlar Ligi durumu
     try {
-        $stmt = $pdo->prepare(
-            "SELECT 'UCL' as tur FROM cl_takimlar
-              WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
-        );
-        $stmt->execute([$kullanici_takim_id]);
-        $avrupa_durum = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!$avrupa_durum) {
-            $stmt2 = $pdo->prepare(
-                "SELECT 'UEL' as tur FROM uel_takimlar
-                  WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
-            );
-            $stmt2->execute([$kullanici_takim_id]);
-            $avrupa_durum = $stmt2->fetch(PDO::FETCH_ASSOC);
-        }
-        if (!$avrupa_durum) {
-            $stmt3 = $pdo->prepare(
-                "SELECT 'UECL' as tur FROM uecl_takimlar
-                  WHERE takim_adi = (SELECT takim_adi FROM takimlar WHERE id=? LIMIT 1) LIMIT 1"
-            );
-            $stmt3->execute([$kullanici_takim_id]);
-            $avrupa_durum = $stmt3->fetch(PDO::FETCH_ASSOC);
+        $takim_adi_sql = $pdo->query("SELECT takim_adi FROM `$kullanici_tablo` WHERE id=$kullanici_takim_id LIMIT 1")->fetchColumn();
+        if ($takim_adi_sql) {
+            foreach (['cl_takimlar'=>'UCL','uel_takimlar'=>'UEL','uecl_takimlar'=>'UECL'] as $tbl=>$tur) {
+                $check = $pdo->prepare("SELECT id FROM $tbl WHERE takim_adi=? LIMIT 1");
+                $check->execute([$takim_adi_sql]);
+                if ($check->fetchColumn()) { $avrupa_durum = ['tur'=>$tur]; break; }
+            }
         }
     } catch (Throwable $e) {}
 
     // Transfer bütçesi
     try {
-        $stmt = $pdo->prepare("SELECT butce FROM takimlar WHERE id=? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT butce FROM `$kullanici_tablo` WHERE id=? LIMIT 1");
         $stmt->execute([$kullanici_takim_id]);
         $transfer_butce = (int)$stmt->fetchColumn();
     } catch (Throwable $e) {}
 }
 
-// Tüm Süper Lig takımları (seçim için)
+// Tüm liglerdeki takımlar (seçim için) — her lig kendi tablosundan
 $tum_takimlar = [];
-try {
-    $tum_takimlar = $pdo->query("SELECT id, takim_adi, logo FROM takimlar ORDER BY takim_adi ASC")->fetchAll(PDO::FETCH_ASSOC);
-} catch (Throwable $e) {}
+$takim_ligleri = [
+    ['tablo' => 'takimlar',    'lig_adi' => 'Süper Lig'],
+    ['tablo' => 'pl_takimlar', 'lig_adi' => 'Premier League'],
+    ['tablo' => 'es_takimlar', 'lig_adi' => 'La Liga'],
+    ['tablo' => 'de_takimlar', 'lig_adi' => 'Bundesliga'],
+    ['tablo' => 'it_takimlar', 'lig_adi' => 'Serie A'],
+    ['tablo' => 'fr_takimlar', 'lig_adi' => 'Ligue 1'],
+    ['tablo' => 'pt_takimlar', 'lig_adi' => 'Liga NOS'],
+];
+foreach ($takim_ligleri as $l) {
+    try {
+        $rows = $pdo->query("SELECT id, takim_adi, logo FROM {$l['tablo']} ORDER BY takim_adi ASC")->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) { $r['lig_adi'] = $l['lig_adi']; $r['tablo'] = $l['tablo']; }
+        unset($r);
+        $tum_takimlar = array_merge($tum_takimlar, $rows);
+    } catch (Throwable $e) {}
+}
+
+// Son sezon şampiyonları (dashboard için)
+$sampiyonlar = [];
+$sampiyon_ligler = [
+    'Süper Lig'      => 'ayar',
+    'Premier League' => 'pl_ayar',
+    'La Liga'        => 'es_ayar',
+    'Bundesliga'     => 'de_ayar',
+    'Serie A'        => 'it_ayar',
+    'Ligue 1'        => 'fr_ayar',
+    'Liga NOS'       => 'pt_ayar',
+];
+foreach ($sampiyon_ligler as $lig_adi => $ayar_tablosu) {
+    try {
+        $s = $pdo->query("SELECT gecen_sezon_sampiyon FROM `$ayar_tablosu` LIMIT 1")->fetchColumn();
+        if ($s) $sampiyonlar[$lig_adi] = $s;
+    } catch (Throwable $e) {}
+}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -380,12 +449,22 @@ try {
                 </div>
                 <div class="col-auto">
                     <form method="POST" style="margin:0;">
-                        <?php if (!empty($tum_takimlar)): ?>
+                        <?php if (!empty($tum_takimlar)):
+                            $gruplar_dash = [];
+                            foreach ($tum_takimlar as $t) { $gruplar_dash[$t['lig_adi']][] = $t; }
+                            $mevcut_val = ($kullanici_tablo ?? 'takimlar') . ':' . $kullanici_takim_id;
+                        ?>
                         <select name="takim_id" style="background:rgba(255,255,255,0.07);color:#fff;border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:6px 12px;font-size:0.85rem;">
-                            <?php foreach ($tum_takimlar as $t): ?>
-                            <option value="<?= $t['id'] ?>" <?= $t['id'] == $kullanici_takim_id ? 'selected' : '' ?>>
-                                <?= htmlspecialchars($t['takim_adi']) ?>
-                            </option>
+                            <?php foreach ($gruplar_dash as $lig => $takimlar): ?>
+                            <optgroup label="<?= htmlspecialchars($lig) ?>" style="background:#1a1a2e;color:#94a3b8;">
+                                <?php foreach ($takimlar as $t):
+                                    $val = htmlspecialchars(($t['tablo'] ?? 'takimlar') . ':' . $t['id']);
+                                ?>
+                                <option value="<?= $val ?>" <?= $val == $mevcut_val ? 'selected' : '' ?> style="background:#1a1a2e;color:#fff;">
+                                    <?= htmlspecialchars($t['takim_adi']) ?>
+                                </option>
+                                <?php endforeach; ?>
+                            </optgroup>
                             <?php endforeach; ?>
                         </select>
                         <button type="submit" name="takim_sec" style="background:rgba(212,175,55,0.15);color:#d4af37;border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:6px 14px;font-size:0.82rem;cursor:pointer;margin-left:6px;">Değiştir</button>
@@ -428,17 +507,32 @@ try {
             </div>
         </div>
         <?php else: ?>
-        <!-- TAKıM SEÇİMİ -->
+        <!-- KARŞILAMA VE TAKIM SEÇİMİ -->
         <div class="dashboard-card text-center">
             <div style="font-size:3rem;margin-bottom:12px;">⚽</div>
-            <h2 class="font-oswald" style="font-size:1.8rem;margin-bottom:6px;">KARİYERİNİZİ BAŞLATIN</h2>
-            <p style="color:#94a3b8;margin-bottom:20px;">Yönetmek istediğiniz takımı seçin ve menajerlik kariyerinize başlayın.</p>
-            <?php if (!empty($tum_takimlar)): ?>
-            <form method="POST" class="team-select-section mx-auto" style="max-width:400px;">
-                <select name="takim_id" class="mb-3">
-                    <option value="">— Takım Seç —</option>
-                    <?php foreach ($tum_takimlar as $t): ?>
-                    <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['takim_adi']) ?></option>
+            <h2 class="font-oswald" style="font-size:2rem;margin-bottom:8px;">HOŞGELDİNİZ!</h2>
+            <p style="color:#94a3b8;margin-bottom:6px;font-size:1rem;max-width:600px;margin-left:auto;margin-right:auto;">
+                Yönetmek istediğiniz takımı seçin ve tüm sezon boyunca sadece onu yönetin.
+            </p>
+            <p style="color:#64748b;font-size:0.85rem;margin-bottom:24px;">Süper Lig, Premier League, La Liga, Bundesliga, Serie A, Ligue 1 veya Liga NOS'tan bir takım seçebilirsiniz.</p>
+            <?php if (!empty($tum_takimlar)):
+                // Liglere göre grupla
+                $gruplar = [];
+                foreach ($tum_takimlar as $t) {
+                    $gruplar[$t['lig_adi']][] = $t;
+                }
+            ?>
+            <form method="POST" class="team-select-section mx-auto" style="max-width:500px;">
+                <select name="takim_id" class="mb-3" required>
+                    <option value="">— Takımınızı Seçin —</option>
+                    <?php foreach ($gruplar as $lig => $takimlar): ?>
+                    <optgroup label="🏆 <?= htmlspecialchars($lig) ?>">
+                        <?php foreach ($takimlar as $t): ?>
+                        <option value="<?= htmlspecialchars(($t['tablo'] ?? 'takimlar') . ':' . $t['id']) ?>">
+                            <?= htmlspecialchars($t['takim_adi']) ?>
+                        </option>
+                        <?php endforeach; ?>
+                    </optgroup>
                     <?php endforeach; ?>
                 </select>
                 <button type="submit" name="takim_sec" class="btn-play-week w-100 justify-content-center" style="margin-top:12px;">
@@ -446,14 +540,37 @@ try {
                 </button>
             </form>
             <?php else: ?>
+            <p style="color:#94a3b8;margin-bottom:20px;">Önce en az bir ligi kurmanız gerekiyor.</p>
             <a href="super_lig/sl_kurulum.php" class="btn-play-week">
-                <i class="fa-solid fa-database me-2"></i>Önce Süper Lig'i Kur
+                <i class="fa-solid fa-database me-2"></i>Süper Lig'i Kur
             </a>
             <?php endif; ?>
         </div>
         <?php endif; ?>
     </div>
     <!-- ======================= /DASHBOARD PANEL ====================== -->
+
+    <?php if (!empty($sampiyonlar)): ?>
+    <!-- ====== GEÇEN SEZON ŞAMPİYONLARI ====== -->
+    <div style="max-width:1400px;margin:0 auto 20px;padding:0 30px;">
+        <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(212,175,55,0.2);border-radius:18px;padding:20px 28px;">
+            <div style="font-size:0.75rem;color:#94a3b8;text-transform:uppercase;letter-spacing:2px;margin-bottom:14px;font-weight:700;">
+                <i class="fa-solid fa-crown" style="color:#d4af37;margin-right:6px;"></i> Geçen Sezon Şampiyonları
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:14px;">
+                <?php foreach($sampiyonlar as $lig => $sampiyon): ?>
+                <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;min-width:200px;">
+                    <i class="fa-solid fa-trophy" style="color:#d4af37;font-size:1.1rem;"></i>
+                    <div>
+                        <div style="font-size:0.65rem;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;"><?= htmlspecialchars($lig) ?></div>
+                        <div style="font-weight:800;color:#fff;font-size:0.9rem;"><?= htmlspecialchars($sampiyon) ?></div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <div class="container-fluid">
         <div class="game-grid">
@@ -546,8 +663,7 @@ try {
                 </div>
             </a>
 
-            <div class="mode-card fr" style="cursor: not-allowed; opacity: 0.65;">
-                <span class="coming-soon-badge">Yakında</span>
+            <a href="ligue_1/ligue1.php" class="mode-card fr">
                 <div class="card-logo-wrapper">
                     <div class="card-logo-bg">
                         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Ligue_1_Uber_Eats_logo.svg/200px-Ligue_1_Uber_Eats_logo.svg.png"
@@ -558,8 +674,9 @@ try {
                 <div class="card-content">
                     <h2 class="card-title">LIGUE 1</h2>
                     <div class="card-desc">Fransa'nın elit sahalarında stil ve zarafeti birleştir.</div>
+                    <div class="card-cta" style="color:#3b82f6;"><i class="fa-solid fa-play"></i> OYNA</div>
                 </div>
-            </div>
+            </a>
 
             <a href="serie_a/serie_a.php" class="mode-card it">
                 <div class="card-logo-wrapper">
@@ -576,8 +693,7 @@ try {
                 </div>
             </a>
 
-            <div class="mode-card pt" style="cursor: not-allowed; opacity: 0.65;">
-                <span class="coming-soon-badge">Yakında</span>
+            <a href="liga_nos/liga_nos.php" class="mode-card pt">
                 <div class="card-logo-wrapper">
                     <div class="card-logo-bg">
                         <i class="fa-solid fa-star" style="font-size:3rem; color:#8b5cf6;"></i>
@@ -586,8 +702,9 @@ try {
                 <div class="card-content">
                     <h2 class="card-title">LIGA NOS</h2>
                     <div class="card-desc">Portekiz'in yeteneğini keşfet ve Avrupa'ya taşı.</div>
+                    <div class="card-cta" style="color:#8b5cf6;"><i class="fa-solid fa-play"></i> OYNA</div>
                 </div>
-            </div>
+            </a>
 
             <!-- FAZ 1: AVRUPA LİGİ -->
             <a href="uel/uel.php" class="mode-card" style="--card-color:#f04e23;">
