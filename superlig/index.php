@@ -474,11 +474,39 @@ include 'db.php';
                 </div>
             </a>
 
+            <!-- FAZ 5: CEO KULÜP YÖNETİMİ -->
+            <a href="kulup_yonetimi.php" class="mode-card" style="--card-color:#d4af37;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-building-columns" style="font-size:2.8rem; color:#d4af37;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">CEO YÖNETİMİ</h2>
+                    <div class="card-desc">FFP, bilet fiyatı, sponsorluk seçimi ve forma satışlarını yönet!</div>
+                    <div class="card-cta" style="color:#d4af37;"><i class="fa-solid fa-chart-pie"></i> GİT</div>
+                </div>
+            </a>
+
+            <!-- FAZ 5: MENAJER KARİYER -->
+            <a href="menajer_kariyer.php" class="mode-card" style="--card-color:#8b5cf6;">
+                <div class="card-logo-wrapper">
+                    <div class="card-logo-bg">
+                        <i class="fa-solid fa-user-tie" style="font-size:2.8rem; color:#8b5cf6;"></i>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <h2 class="card-title">MENAJER KARİYER</h2>
+                    <div class="card-desc">Yönetim güvenini koru, kovulmaktan kaç veya yeni takımdan teklif al!</div>
+                    <div class="card-cta" style="color:#8b5cf6;"><i class="fa-solid fa-briefcase"></i> GİT</div>
+                </div>
+            </a>
+
         </div>
     </div>
 
     <div class="footer-note font-oswald">
-        V4.0.0 PHASE 4 — KÜRESEL TRANSFER BORSASI AKTİF • DEADLINE DAY / SCOUT / BOSMAN / KİRALIK / RELEASE CLAUSE
+        V5.0.0 PHASE 5 — CEO KULÜP YÖNETİMİ AKTİF • FFP / BİLET / SPONSORLUK / FORMA / KOVULMA / KARİYER
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
