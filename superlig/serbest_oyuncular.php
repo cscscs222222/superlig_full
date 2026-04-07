@@ -248,8 +248,7 @@ function paraFormatlaBosman($sayi) {
         <?php if (empty($serbest_oyuncular)): ?>
             <div class="empty-state">
                 <i class="fa-solid fa-face-smile fa-2x mb-3" style="color:#333;"></i><br>
-                Şu an sözleşmesi 6 ay veya daha az kalan oyuncu yok.<br>
-                <small style="color:#555;">(Oyuncular tablolarına <code>sozlesme_ay</code> sütununun eklenmesi gerekiyor: <em>faz4_yeni_tablolar.sql</em>)</small>
+                Şu an sözleşmesi 6 ay veya daha az kalan oyuncu yok.
             </div>
         <?php else: ?>
         <div class="table-responsive">

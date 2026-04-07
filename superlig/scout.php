@@ -345,7 +345,7 @@ function paraFormatlaScout($sayi) {
                     <div class="bolge-grid">
                         <?php foreach ($bolgeler as $bolge_adi => $b): ?>
                         <label class="bolge-card" style="--bolge-renk:<?= $b['renk'] ?>; background:rgba(0,0,0,0.2);">
-                            <input type="radio" name="bolge" value="<?= htmlspecialchars($bolge_adi) ?>" style="display:none;" required>
+                            <input type="radio" name="bolge" value="<?= htmlspecialchars($bolge_adi) ?>" class="visually-hidden" required>
                             <div><i class="fa-solid <?= $b['ikon'] ?>" style="color:<?= $b['renk'] ?>;"></i></div>
                             <h6 style="color:<?= $b['renk'] ?>;"><?= htmlspecialchars($bolge_adi) ?></h6>
                             <small><?= htmlspecialchars($b['aciklama']) ?></small>

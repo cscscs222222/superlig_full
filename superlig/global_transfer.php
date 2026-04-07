@@ -448,9 +448,11 @@ function paraFormatla($sayi) {
                                         <?php foreach($benim_takimlarim as $bt): 
                                             // Kendi oyuncunu kendine alma
                                             if($o['kaynak'] == $bt['kaynak'] && $o['takim_id'] == $bt['id']) continue;
+                                            $clause_fiyat    = !empty($o['release_clause']) ? (int)$o['release_clause'] : null;
+                                            $butce_yetersiz  = $bt['butce'] < $o['fiyat'] && ($clause_fiyat === null || $bt['butce'] < $clause_fiyat);
                                         ?>
-                                            <option value="<?= $bt['kaynak'] . '_' . $bt['id'] ?>" <?= $bt['butce'] < $o['fiyat'] && (empty($o['release_clause']) || $bt['butce'] < $o['release_clause']) ? 'disabled' : '' ?>>
-                                                <?= htmlspecialchars($bt['takim_adi']) ?> (<?= $bt['butce'] < $o['fiyat'] && (empty($o['release_clause']) || $bt['butce'] < $o['release_clause']) ? 'Bütçe Yetersiz' : 'Uygun' ?>)
+                                            <option value="<?= $bt['kaynak'] . '_' . $bt['id'] ?>" <?= $butce_yetersiz ? 'disabled' : '' ?>>
+                                                <?= htmlspecialchars($bt['takim_adi']) ?> (<?= $butce_yetersiz ? 'Bütçe Yetersiz' : 'Uygun' ?>)
                                             </option>
                                         <?php endforeach; ?>
                                     </select>

@@ -345,7 +345,7 @@ function paraFormatlaKiralik($sayi) {
                 <div class="p-3 text-muted small" style="line-height:1.8;">
                     <div class="d-flex align-items-start gap-2 mb-2">
                         <i class="fa-solid fa-circle-check mt-1" style="color:#10b981;"></i>
-                        <span>Kiralık gönderilen oyuncuların <strong style="color:#fff;">mac_sayisi</strong> her hafta artar.</span>
+                        <span>Kiralık gönderilen oyuncuların <strong style="color:#fff;">maç sayısı</strong> her hafta artar.</span>
                     </div>
                     <div class="d-flex align-items-start gap-2 mb-2">
                         <i class="fa-solid fa-circle-check mt-1" style="color:#10b981;"></i>

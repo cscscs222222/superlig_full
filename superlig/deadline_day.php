@@ -135,7 +135,6 @@ if (isset($_POST['teklif_cevap'])) {
     if ($teklif_id > 0 && in_array($cevap, ['kabul', 'ret'], true)) {
         try {
             $pdo->beginTransaction();
-            $teklif = $pdo->prepare("SELECT * FROM deadline_panik_teklif WHERE id = ? AND durum = 'beklemede'")->execute([$teklif_id]);
             $teklif = $pdo->prepare("SELECT * FROM deadline_panik_teklif WHERE id = ? AND durum = 'beklemede'");
             $teklif->execute([$teklif_id]);
             $tek = $teklif->fetch(PDO::FETCH_ASSOC);
