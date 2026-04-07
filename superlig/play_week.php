@@ -20,6 +20,24 @@ function simulate_league_week(
     int    $max_hafta,
     int    $kullanici_takim_id = 0
 ): int {
+    // Validate table names against the known allowlist to prevent SQL injection
+    static $allowed_tables = [
+        'maclar', 'takimlar', 'ayar',
+        'pl_maclar', 'pl_takimlar', 'pl_ayar',
+        'es_maclar', 'es_takimlar', 'es_ayar',
+        'de_maclar', 'de_takimlar', 'de_ayar',
+        'it_maclar', 'it_takimlar', 'it_ayar',
+        'fr_maclar', 'fr_takimlar', 'fr_ayar',
+        'cl_maclar', 'cl_takimlar', 'cl_ayar',
+        'uel_maclar', 'uel_takimlar', 'uel_ayar',
+        'uecl_maclar', 'uecl_takimlar', 'uecl_ayar',
+    ];
+    if (!in_array($maclar_tbl, $allowed_tables, true) ||
+        !in_array($takimlar_tbl, $allowed_tables, true) ||
+        !in_array($ayar_tbl, $allowed_tables, true)) {
+        return 0;
+    }
+
     $simulated = 0;
     try {
         $stmt = $pdo->prepare(
@@ -61,17 +79,20 @@ function simulate_league_week(
             $ev_s   = (int)$ev_skor;
             $dep_s  = (int)$dep_skor;
 
-            $pdo->exec("UPDATE $takimlar_tbl SET atilan_gol = atilan_gol + $ev_s,  yenilen_gol = yenilen_gol + $dep_s WHERE id = $ev_id");
-            $pdo->exec("UPDATE $takimlar_tbl SET atilan_gol = atilan_gol + $dep_s, yenilen_gol = yenilen_gol + $ev_s  WHERE id = $dep_id");
+            $pdo->prepare("UPDATE $takimlar_tbl SET atilan_gol = atilan_gol + ?, yenilen_gol = yenilen_gol + ? WHERE id = ?")
+                ->execute([$ev_s, $dep_s, $ev_id]);
+            $pdo->prepare("UPDATE $takimlar_tbl SET atilan_gol = atilan_gol + ?, yenilen_gol = yenilen_gol + ? WHERE id = ?")
+                ->execute([$dep_s, $ev_s, $dep_id]);
 
             if ($ev_s > $dep_s) {
-                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+3, galibiyet=galibiyet+1 WHERE id=$ev_id");
-                $pdo->exec("UPDATE $takimlar_tbl SET malubiyet=malubiyet+1 WHERE id=$dep_id");
+                $pdo->prepare("UPDATE $takimlar_tbl SET puan=puan+3, galibiyet=galibiyet+1 WHERE id=?")->execute([$ev_id]);
+                $pdo->prepare("UPDATE $takimlar_tbl SET malubiyet=malubiyet+1 WHERE id=?")->execute([$dep_id]);
             } elseif ($ev_s === $dep_s) {
-                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+1, beraberlik=beraberlik+1 WHERE id IN ($ev_id,$dep_id)");
+                $pdo->prepare("UPDATE $takimlar_tbl SET puan=puan+1, beraberlik=beraberlik+1 WHERE id=?")->execute([$ev_id]);
+                $pdo->prepare("UPDATE $takimlar_tbl SET puan=puan+1, beraberlik=beraberlik+1 WHERE id=?")->execute([$dep_id]);
             } else {
-                $pdo->exec("UPDATE $takimlar_tbl SET puan=puan+3, galibiyet=galibiyet+1 WHERE id=$dep_id");
-                $pdo->exec("UPDATE $takimlar_tbl SET malubiyet=malubiyet+1 WHERE id=$ev_id");
+                $pdo->prepare("UPDATE $takimlar_tbl SET puan=puan+3, galibiyet=galibiyet+1 WHERE id=?")->execute([$dep_id]);
+                $pdo->prepare("UPDATE $takimlar_tbl SET malubiyet=malubiyet+1 WHERE id=?")->execute([$ev_id]);
             }
             $simulated++;
         } catch (Throwable $e) {}
@@ -79,10 +100,9 @@ function simulate_league_week(
 
     // Hafta bittiyse sayacı artır
     try {
-        $hafta_int    = (int)$hafta;
-        $max_hafta_int = (int)$max_hafta;
-        $kalan = $pdo->query("SELECT COUNT(*) FROM $maclar_tbl WHERE hafta=$hafta_int AND ev_skor IS NULL")->fetchColumn();
-        if ($kalan == 0 && $hafta_int < $max_hafta_int) {
+        $kalan = $pdo->prepare("SELECT COUNT(*) FROM $maclar_tbl WHERE hafta=? AND ev_skor IS NULL");
+        $kalan->execute([$hafta]);
+        if ($kalan->fetchColumn() == 0 && $hafta < $max_hafta) {
             $pdo->exec("UPDATE $ayar_tbl SET hafta = hafta + 1");
         }
     } catch (Throwable $e) {}
@@ -157,10 +177,10 @@ if (isset($_POST['tum_sezonu_simule'])) {
                 $h, $lig['max'], 0  // Kullanıcı takımı dahil her maç simüle edilir
             );
         }
-        // Hafta sayacını sona al
+        // Hafta sayacını sona al (table name is from hardcoded allowlist)
         try {
             $max_son = (int)$lig['max'];
-            $pdo->exec("UPDATE {$lig['ayar']} SET hafta = $max_son");
+            $pdo->prepare("UPDATE {$lig['ayar']} SET hafta = ?")->execute([$max_son]);
         } catch (Throwable $e) {}
     }
     // Sezon sonu ekranına yönlendir (Super Lig sezon geçişi)
@@ -176,12 +196,13 @@ foreach ($ligler as $lig) {
     try {
         $row = $pdo->query("SELECT hafta, sezon_yil FROM {$lig['ayar']} LIMIT 1")->fetch(PDO::FETCH_ASSOC);
         if (!$row) continue;
-        $kalan = (int)$pdo->query(
-            "SELECT COUNT(*) FROM {$lig['maclar']} WHERE hafta={$row['hafta']} AND ev_skor IS NULL"
-        )->fetchColumn();
-        $toplam = (int)$pdo->query(
-            "SELECT COUNT(*) FROM {$lig['maclar']} WHERE hafta={$row['hafta']}"
-        )->fetchColumn();
+        $hafta_val = (int)$row['hafta'];
+        $kalan_stmt = $pdo->prepare("SELECT COUNT(*) FROM {$lig['maclar']} WHERE hafta=? AND ev_skor IS NULL");
+        $kalan_stmt->execute([$hafta_val]);
+        $kalan = (int)$kalan_stmt->fetchColumn();
+        $toplam_stmt = $pdo->prepare("SELECT COUNT(*) FROM {$lig['maclar']} WHERE hafta=?");
+        $toplam_stmt->execute([$hafta_val]);
+        $toplam = (int)$toplam_stmt->fetchColumn();
         $durum_listesi[] = [
             'ad'     => $lig['ad'],
             'hafta'  => (int)$row['hafta'],

@@ -201,9 +201,11 @@ $sezon_ilerleme = count($lig_only) > 0 ? round(array_sum(array_map(fn($l) => ($l
             <a href="play_week.php" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-family:'Oswald',sans-serif;font-size:0.95rem;font-weight:800;letter-spacing:1px;text-decoration:none;text-transform:uppercase;box-shadow:0 4px 18px rgba(37,99,235,0.35);">
                 <i class="fa-solid fa-play"></i> GLOBAL HAFTAYI OYNA
             </a>
-            <a href="play_week.php" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-family:'Oswald',sans-serif;font-size:0.95rem;font-weight:800;letter-spacing:1px;text-decoration:none;text-transform:uppercase;box-shadow:0 4px 18px rgba(220,38,38,0.35);">
-                <i class="fa-solid fa-forward-fast"></i> TÜM SEZONU SİMÜLE ET
-            </a>
+            <form method="POST" action="play_week.php" style="margin:0;" onsubmit="return confirm('Tüm sezon simüle edilecek. Devam?');">
+                <button type="submit" name="tum_sezonu_simule" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#7f1d1d,#dc2626);color:#fff;border:none;border-radius:10px;padding:10px 22px;font-family:'Oswald',sans-serif;font-size:0.95rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;box-shadow:0 4px 18px rgba(220,38,38,0.35);cursor:pointer;">
+                    <i class="fa-solid fa-forward-fast"></i> TÜM SEZONU SİMÜLE ET
+                </button>
+            </form>
         </div>
     </div>
 

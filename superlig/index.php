@@ -417,9 +417,11 @@ try {
                 <a href="play_week.php" class="btn-play-week">
                     <i class="fa-solid fa-play"></i> GLOBAL HAFTAYI OYNA
                 </a>
-                <a href="play_week.php" class="btn-sim-season">
-                    <i class="fa-solid fa-forward-fast"></i> TÜM SEZONU SİMÜLE ET
-                </a>
+                <form method="POST" action="play_week.php" style="margin:0;" onsubmit="return confirm('Tüm sezon simüle edilecek! Devam?');">
+                    <button type="submit" name="tum_sezonu_simule" class="btn-sim-season">
+                        <i class="fa-solid fa-forward-fast"></i> TÜM SEZONU SİMÜLE ET
+                    </button>
+                </form>
                 <a href="super_lig/superlig.php" class="btn-play-week" style="background:linear-gradient(135deg,#7f1d48,#e11d48);">
                     <i class="fa-solid fa-futbol"></i> KENDİ MAÇIMI OYNA
                 </a>
