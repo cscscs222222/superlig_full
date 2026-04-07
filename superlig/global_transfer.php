@@ -7,6 +7,11 @@ include 'db.php';
 $mesaj = "";
 $mesaj_tipi = "";
 
+// --- FAZ 5: Süperstar Forma Satış Geliri Hesaplayıcı ---
+function superstar_merch_geliri(int $ovr): int {
+    return 2000000 + ($ovr - 90) * 500000;
+}
+
 // 1. KULLANICININ YÖNETTİĞİ TAKIMLARI GÜVENLİ ŞEKİLDE ÇEK
 $benim_takimlarim = [];
 
@@ -126,7 +131,7 @@ if (isset($_POST['satin_al'])) {
                                 try { $guncel_hafta_val = (int)$pdo->query("SELECT hafta FROM ayar LIMIT 1")->fetchColumn(); } catch (Throwable $e2) {}
                                 try { $guncel_sezon_val = (int)$pdo->query("SELECT sezon_yil FROM ayar LIMIT 1")->fetchColumn(); } catch (Throwable $e2) {}
 
-                                $superstar_gelir = 2000000 + ((int)$hedef_oyuncu['ovr'] - 90) * 500000;
+                                $superstar_gelir = superstar_merch_geliri((int)$hedef_oyuncu['ovr']);
                                 $pdo->prepare("INSERT INTO forma_satis_log
                                     (takim_id, takim_lig, sezon_yil, hafta, gelir, tetikleyen, aciklama)
                                     VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -148,7 +153,7 @@ if (isset($_POST['satin_al'])) {
                             $mesaj = "BOMBA TRANSFER! " . htmlspecialchars($hedef_oyuncu['isim']) . " resmen " . htmlspecialchars($alici_takim['takim_adi']) . " kadrosuna katıldı!";
                         }
                         if ((int)$hedef_oyuncu['ovr'] >= 90) {
-                            $mesaj .= " 👕 Süperstar etkisi: +" . number_format((2000000 + ((int)$hedef_oyuncu['ovr'] - 90) * 500000) / 1000000, 1) . "M€ forma satış geliri kasaya eklendi!";
+                            $mesaj .= " 👕 Süperstar etkisi: +" . number_format(superstar_merch_geliri((int)$hedef_oyuncu['ovr']) / 1000000, 1) . "M€ forma satış geliri kasaya eklendi!";
                         }
                         $mesaj_tipi = "success";
 

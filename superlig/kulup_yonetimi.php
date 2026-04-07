@@ -69,7 +69,7 @@ define('FFP_ESIK_PUAN',     -30000000);
 
 // 1. BİLET FİYATI KAYDET
 if (isset($_POST['bilet_kaydet']) && $aktif_takim) {
-    $fiyat = max(10, min(5000, (int)($_POST['bilet_fiyati'] ?? 200)));
+    $fiyat = max(10, min(2000, (int)($_POST['bilet_fiyati'] ?? 200)));
     $takim_id  = (int)$aktif_takim['id'];
     $tbl = $tbl_takim[$aktif_lig];
 
@@ -161,9 +161,13 @@ if (isset($_POST['forma_geliri_hesapla']) && $aktif_takim) {
 
     try {
         // Ortalama OVR hesapla
-        $ort_ovr = (int)$pdo->query("SELECT COALESCE(AVG(ovr),70) FROM $tbl_oy WHERE takim_id = $takim_id")->fetchColumn();
+        $stmt_ovr = $pdo->prepare("SELECT COALESCE(AVG(ovr),70) FROM $tbl_oy WHERE takim_id = ?");
+        $stmt_ovr->execute([$takim_id]);
+        $ort_ovr = (int)$stmt_ovr->fetchColumn();
         // Süperstar (90+ OVR) var mı?
-        $superstar_sayisi = (int)$pdo->query("SELECT COUNT(*) FROM $tbl_oy WHERE takim_id = $takim_id AND ovr >= 90")->fetchColumn();
+        $stmt_ss = $pdo->prepare("SELECT COUNT(*) FROM $tbl_oy WHERE takim_id = ? AND ovr >= 90");
+        $stmt_ss->execute([$takim_id]);
+        $superstar_sayisi = (int)$stmt_ss->fetchColumn();
 
         // Haftalık gelir hesaplama formülü
         $base      = 50000 + ($ort_ovr - 60) * 8000;      // OVR 70 → 130K, OVR 85 → 250K
@@ -191,7 +195,9 @@ if (isset($_POST['ffp_kontrol']) && $aktif_takim) {
     $tbl      = $tbl_takim[$aktif_lig];
 
     try {
-        $butce      = (int)$pdo->query("SELECT butce FROM $tbl WHERE id = $takim_id")->fetchColumn();
+        $stmt_butce = $pdo->prepare("SELECT butce FROM $tbl WHERE id = ?");
+        $stmt_butce->execute([$takim_id]);
+        $butce      = (int)$stmt_butce->fetchColumn();
         $ffp_bakiye = $butce; // Basit versiyon: anlık bakiyeyi kullan
 
         $ceza = 'yok'; $puan_silme = 0; $transfer_yasagi = 0;

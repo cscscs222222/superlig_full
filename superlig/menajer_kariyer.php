@@ -66,6 +66,9 @@ $beklenti_etiketler = [
 
 // Takım sıralamasını çek
 function takim_sira_al($pdo, $takim_id, $tbl_takim) {
+    // Whitelist: sadece bilinen tablo adlarına izin ver
+    $izinli_tablolar = ['takimlar','cl_takimlar','pl_takimlar','es_takimlar','de_takimlar','fr_takimlar','it_takimlar','pt_takimlar'];
+    if (!in_array($tbl_takim, $izinli_tablolar, true)) return 0;
     try {
         $rows = $pdo->query("SELECT id FROM $tbl_takim ORDER BY puan DESC, (atilan_gol - yenilen_gol) DESC, atilan_gol DESC")->fetchAll(PDO::FETCH_COLUMN);
         $pos  = array_search($takim_id, $rows);
@@ -492,7 +495,7 @@ $durum        = $kariyer['durum'] ?? 'aktif';
             <div class="guven-pct"><?= $guven ?>%</div>
         </div>
         <p style="color:#475569; font-size:0.78rem; margin-top:8px;">
-            30% altı → Kovulma uyarısı oluşur &nbsp;|&nbsp; 20% altı → Otomatik kovulma tetiklenir.
+            20% altı → Kovulma uyarısı oluşur &nbsp;|&nbsp; 20% altı → Otomatik kovulma tetiklenir.
             <?php if ($guncel_hafta >= 17): ?>
             <strong style="color:#f59e0b;"> Sezon ortasını geçtiniz — Yönetim daha sert değerlendiriyor!</strong>
             <?php endif; ?>
