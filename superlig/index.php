@@ -25,6 +25,14 @@ foreach ($ayar_tablosu_migrasyonlari as $tbl => $default_sampiyon) {
     } catch (Throwable $e) {}
 }
 
+// İstifa Et (Resign) handler
+if (isset($_POST['istifa_et'])) {
+    unset($_SESSION['kullanici_takim_id']);
+    unset($_SESSION['kullanici_takim_tablo']);
+    try { $pdo->exec("UPDATE ayar SET kullanici_takim_id=NULL WHERE id=1"); } catch (Throwable $e) {}
+    header("Location: index.php"); exit;
+}
+
 // Takım seçim formu işle
 if (isset($_POST['takim_sec'])) {
     // Format: "tablo:id" (e.g. "fr_takimlar:583")
@@ -180,6 +188,9 @@ foreach ($sampiyon_ligler as $lig_adi => $ayar_tablosu) {
         if ($s) $sampiyonlar[$lig_adi] = $s;
     } catch (Throwable $e) {}
 }
+
+$reset_success = !empty($_SESSION['reset_success']);
+unset($_SESSION['reset_success']);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -402,6 +413,11 @@ foreach ($sampiyon_ligler as $lig_adi => $ayar_tablosu) {
         .team-select-section select { background: rgba(255,255,255,0.07); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 16px; font-size: 0.95rem; width: 100%; }
         .team-select-section select option { background: #1a1a2e; color: #fff; }
 
+        .btn-reset-system { display: inline-flex; align-items: center; gap: 10px; background: linear-gradient(135deg,#450a0a,#7f1d1d); color: #fca5a5; border: 1px solid rgba(220,38,38,0.5); border-radius: 12px; padding: 10px 22px; font-size: 0.9rem; font-weight: 800; font-family: 'Oswald', sans-serif; letter-spacing: 1px; text-decoration: none; text-transform: uppercase; box-shadow: 0 4px 16px rgba(220,38,38,0.25); transition: all .2s; cursor: pointer; }
+        .btn-reset-system:hover { background: linear-gradient(135deg,#7f1d1d,#dc2626); color: #fff; box-shadow: 0 8px 28px rgba(220,38,38,0.5); }
+        .btn-resign { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); color: #94a3b8; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 8px 18px; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.5px; text-decoration: none; text-transform: uppercase; transition: all .2s; cursor: pointer; }
+        .btn-resign:hover { background: rgba(239,68,68,0.12); color: #f87171; border-color: rgba(239,68,68,0.3); }
+        .flash-reset { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 14px; padding: 14px 20px; margin-bottom: 20px; color: #d1fae5; font-size: 0.9rem; }
     </style>
 </head>
 <body>
@@ -423,6 +439,12 @@ foreach ($sampiyon_ligler as $lig_adi => $ayar_tablosu) {
 
     <!-- ======================= DASHBOARD PANEL ======================= -->
     <div class="dashboard-panel">
+        <?php if ($reset_success): ?>
+        <div class="flash-reset">
+            <i class="fa-solid fa-check-circle me-2" style="color:#10b981;"></i>
+            <strong>Sistem başarıyla sıfırlandı!</strong> Tüm maç verileri, puan tabloları ve hafta sayaçları başlangıç durumuna döndürüldü. Yeni kariyerinize başlamak için bir takım seçin.
+        </div>
+        <?php endif; ?>
         <?php if ($kullanici_takim): ?>
         <div class="dashboard-card">
             <div class="row align-items-center g-3 mb-3">
@@ -504,6 +526,19 @@ foreach ($sampiyon_ligler as $lig_adi => $ayar_tablosu) {
                 <a href="super_lig/superlig.php" class="btn-play-week" style="background:linear-gradient(135deg,#7f1d48,#e11d48);">
                     <i class="fa-solid fa-futbol"></i> KENDİ MAÇIMI OYNA
                 </a>
+            </div>
+            <!-- İstifa Et ve Sistem Sıfırla -->
+            <div class="d-flex gap-3 flex-wrap mt-3 pt-3" style="border-top:1px solid rgba(255,255,255,0.07);">
+                <form method="POST" style="margin:0;" onsubmit="return confirm('Takımınızdan istifa etmek istediğinizden emin misiniz? Takım seçim ekranına döndürüleceksiniz.');">
+                    <button type="submit" name="istifa_et" class="btn-resign">
+                        <i class="fa-solid fa-right-from-bracket"></i> İSTİFA ET
+                    </button>
+                </form>
+                <form method="POST" action="reset_system.php" style="margin:0;" onsubmit="return confirm('⚠️ DİKKAT!\n\nTÜM SİSTEM SIFIRLANACAK!\n\nTüm maç verileri, puan tabloları ve hafta sayaçları silinecek. Bu işlem geri alınamaz!\n\nDevam etmek istediğinizden EMİN MİSİNİZ?');">
+                    <button type="submit" name="reset_onayli" class="btn-reset-system">
+                        <i class="fa-solid fa-rotate-left"></i> TÜM SİSTEMİ SIFIRLA
+                    </button>
+                </form>
             </div>
         </div>
         <?php else: ?>
@@ -696,7 +731,9 @@ foreach ($sampiyon_ligler as $lig_adi => $ayar_tablosu) {
             <a href="liga_nos/liga_nos.php" class="mode-card pt">
                 <div class="card-logo-wrapper">
                     <div class="card-logo-bg">
-                        <i class="fa-solid fa-star" style="font-size:3rem; color:#8b5cf6;"></i>
+                        <img src="https://upload.wikimedia.org/wikipedia/pt/thumb/7/7d/Liga_NOS.png/120px-Liga_NOS.png"
+                             alt="Liga NOS Logo"
+                             onerror="logoFallback(this,'fa-solid fa-star','#8b5cf6')">
                     </div>
                 </div>
                 <div class="card-content">

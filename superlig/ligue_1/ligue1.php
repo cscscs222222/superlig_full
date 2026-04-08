@@ -295,7 +295,11 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 <body>
 <nav class="pro-navbar">
     <a href="ligue1.php" class="nav-brand font-oswald">
-        <i class="fa-solid fa-flag"></i> LIGUE 1
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b1/Ligue_1_Uber_Eats_logo.svg/60px-Ligue_1_Uber_Eats_logo.svg.png"
+             alt="Ligue 1"
+             style="height:36px;width:auto;object-fit:contain;"
+             onerror="this.style.display='none'">
+        LIGUE 1
     </a>
     <div class="d-none d-lg-flex gap-3">
         <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez</a>
@@ -435,7 +439,7 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
                     <?php if(!$oynandi): ?>
                     <div class="match-actions">
                         <?php if($benim && $benim_macim_id==$m['id']): ?>
-                        <a href="?action=tek_mac_simule&mac_id=<?=$m['id']?>&hafta=<?=$goster_hafta?>" class="action-btn" style="color:var(--fr-gold);"><i class="fa-solid fa-play me-1"></i>MAÇ OYNANIYOYNANIYSimüle Et</a>
+                        <a href="?action=tek_mac_simule&mac_id=<?=$m['id']?>&hafta=<?=$goster_hafta?>" class="action-btn" style="color:var(--fr-gold);"><i class="fa-solid fa-play me-1"></i>Maçıma Çık</a>
                         <?php else: ?>
                         <a href="?action=tek_mac_simule&mac_id=<?=$m['id']?>&hafta=<?=$goster_hafta?>" class="action-btn"><i class="fa-solid fa-bolt me-1"></i>Simüle Et</a>
                         <?php endif; ?>
