@@ -269,6 +269,8 @@ unset($_SESSION['play_week_sonuc']);
     /* Flash messages */
     .flash-box { background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:14px; padding:16px 20px; margin-bottom:24px; }
     .flash-item { font-size:0.88rem; color:#d1fae5; padding:3px 0; }
+    .btn-reset { display:block; width:100%; padding:14px; border-radius:14px; font-family:'Oswald',sans-serif; font-size:1.1rem; font-weight:800; letter-spacing:1.5px; text-align:center; cursor:pointer; border:1px solid rgba(220,38,38,0.4); transition:all .25s; background:rgba(127,29,29,0.3); color:#fca5a5; margin-top:16px; }
+    .btn-reset:hover { background:linear-gradient(135deg,#7f1d1d,#dc2626); color:#fff; border-color:#dc2626; transform:translateY(-2px); box-shadow:0 8px 28px rgba(220,38,38,0.4); }
     /* Section label */
     .section-lbl { font-family:'Oswald',sans-serif; font-size:0.85rem; color:#94a3b8; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
 </style>
@@ -349,6 +351,17 @@ unset($_SESSION['play_week_sonuc']);
                 TÜM SEZONU SİMÜLE ET
                 <span style="font-size:0.85rem; font-weight:400; display:block; margin-top:4px; letter-spacing:0; text-transform:none; opacity:0.85;">
                     Kalan tüm haftalar saniyeler içinde oynanır → Sezon Sonu Ekranına geçilir
+                </span>
+            </button>
+        </form>
+
+        <!-- TÜM SİSTEMİ SIFIRLA -->
+        <form method="POST" action="reset_system.php" onsubmit="return confirm('⚠️ DİKKAT!\n\nTÜM SİSTEM SIFIRLANACAK!\n\nTüm maç verileri, puan tabloları ve hafta sayaçları silinecek. Bu işlem geri alınamaz!\n\nDevam etmek istediğinizden EMİN MİSİNİZ?');">
+            <button type="submit" name="reset_onayli" class="btn-reset">
+                <i class="fa-solid fa-rotate-left me-2"></i>
+                TÜM SİSTEMİ SIFIRLA
+                <span style="font-size:0.78rem; font-weight:400; display:block; margin-top:4px; letter-spacing:0; text-transform:none; opacity:0.7;">
+                    Tüm maçlar, puan tabloları ve sezon verileri silinir — Başa dön
                 </span>
             </button>
         </form>

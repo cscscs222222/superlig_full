@@ -288,7 +288,13 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 </head>
 <body>
 <nav class="pro-navbar">
-    <a href="liga_nos.php" class="nav-brand font-oswald"><i class="fa-solid fa-star"></i> LIGA NOS</a>
+    <a href="liga_nos.php" class="nav-brand font-oswald">
+        <img src="https://upload.wikimedia.org/wikipedia/pt/thumb/7/7d/Liga_NOS.png/60px-Liga_NOS.png"
+             alt="Liga NOS"
+             style="height:36px;width:auto;object-fit:contain;"
+             onerror="this.style.display='none'">
+        LIGA NOS
+    </a>
     <div class="d-none d-lg-flex gap-3">
         <a href="../index.php" class="nav-link-item"><i class="fa-solid fa-house"></i> Merkez</a>
         <a href="liga_nos.php" class="nav-link-item" style="color:#fff;"><i class="fa-solid fa-tv"></i> Fikstür</a>
