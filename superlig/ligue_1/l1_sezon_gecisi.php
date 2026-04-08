@@ -48,6 +48,14 @@ if(isset($_POST['yeni_sezona_gec'])) {
         } catch(Throwable $e) {}
     }
 
+    // 5. UECL - Conference League (7-8)
+    foreach(array_slice($puan_durumu,6,2) as $ct) {
+        try {
+            $var_mi=$pdo->query("SELECT id FROM uecl_takimlar WHERE takim_adi=".$pdo->quote($ct['takim_adi']))->fetchColumn();
+            if(!$var_mi) $pdo->prepare("INSERT INTO uecl_takimlar (takim_adi,logo,hucum,savunma,butce,lig) VALUES (?,?,?,?,?,'Ligue 1')")->execute([$ct['takim_adi'],$ct['logo'],$ct['hucum'],$ct['savunma'],8000000]);
+        } catch(Throwable $e) {}
+    }
+
     // 5. Sezon sıfırla
     $yeni_sezon=$guncel_sezon+1;
     try {
@@ -109,6 +117,7 @@ body { background:#0d0d0d; color:#fff; font-family:'Inter',sans-serif; min-heigh
     <?php foreach(array_slice($puan_durumu,0,10) as $idx=>$t): $s=$idx+1;
         $badge=''; if($s<=4) $badge='<span style="font-size:0.7rem;background:rgba(0,63,138,0.3);color:#60a5fa;border:1px solid rgba(96,165,250,0.4);border-radius:20px;padding:2px 8px;margin-left:6px;">UCL</span>';
         elseif($s<=6) $badge='<span style="font-size:0.7rem;background:rgba(239,65,53,0.2);color:#f87171;border:1px solid rgba(248,113,113,0.4);border-radius:20px;padding:2px 8px;margin-left:6px;">UEL</span>';
+        elseif($s<=8) $badge='<span style="font-size:0.7rem;background:rgba(46,204,113,0.2);color:#4ade80;border:1px solid rgba(74,222,128,0.4);border-radius:20px;padding:2px 8px;margin-left:6px;">UECL</span>';
     ?>
     <div class="sira-row">
         <div class="sira-num"><?=$s?></div>
