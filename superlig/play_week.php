@@ -58,6 +58,10 @@ function simulate_league_week(
             continue;
         }
         try {
+            // Auto-select Starting XI for both teams before simulation
+            $engine->auto_ilk_11((int)$m['ev']);
+            $engine->auto_ilk_11((int)$m['dep']);
+
             $skorlar  = $engine->gercekci_skor_hesapla($m['ev'], $m['dep'], $m);
             $ev_skor  = $skorlar['ev'];
             $dep_skor = $skorlar['dep'];
@@ -362,6 +366,8 @@ foreach ($ligler as $lig) {
 if (session_status() === PHP_SESSION_NONE) session_start();
 $flash = $_SESSION['play_week_sonuc'] ?? [];
 unset($_SESSION['play_week_sonuc']);
+$sifirla_mesaj = $_SESSION['sezon_sifirla_mesaj'] ?? '';
+unset($_SESSION['sezon_sifirla_mesaj']);
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -374,7 +380,9 @@ unset($_SESSION['play_week_sonuc']);
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <style>
     :root { --gold:#d4af37; --bg:#050505; --panel:rgba(255,255,255,0.05); --border:rgba(255,255,255,0.1); }
-    body { background:var(--bg); color:#fff; font-family:'Poppins',sans-serif; min-height:100vh; }
+    /* --- YÜKSEK KONTRAST / DARK MODE OVERRIDE --- */
+    body, p, h1, h2, h3, h4, h5, h6, span, label, li, td, th { color: #ffffff !important; }
+    body { background:var(--bg) !important; color:#fff !important; font-family:'Poppins',sans-serif; min-height:100vh; }
     .font-oswald { font-family:'Oswald',sans-serif; text-transform:uppercase; }
     /* Navbar */
     .pro-navbar { background:rgba(5,5,5,0.95); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1000; padding:0 2rem; height:68px; display:flex; align-items:center; justify-content:space-between; }
@@ -391,7 +399,7 @@ unset($_SESSION['play_week_sonuc']);
     /* Glass panels */
     .glass { background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:24px; }
     /* League status cards */
-    .lig-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; margin-bottom:32px; }
+    .lig-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-bottom:32px; }
     .lig-kart { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:18px 20px; position:relative; }
     .lig-kart.bitti { border-color:rgba(16,185,129,0.3); }
     .lig-ad { font-family:'Oswald',sans-serif; font-size:1.15rem; font-weight:700; }
@@ -412,6 +420,14 @@ unset($_SESSION['play_week_sonuc']);
     .flash-item { font-size:0.88rem; color:#d1fae5; padding:3px 0; }
     .btn-reset { display:block; width:100%; padding:14px; border-radius:14px; font-family:'Oswald',sans-serif; font-size:1.1rem; font-weight:800; letter-spacing:1.5px; text-align:center; cursor:pointer; border:1px solid rgba(220,38,38,0.4); transition:all .25s; background:rgba(127,29,29,0.3); color:#fca5a5; margin-top:16px; }
     .btn-reset:hover { background:linear-gradient(135deg,#7f1d1d,#dc2626); color:#fff; border-color:#dc2626; transform:translateY(-2px); box-shadow:0 8px 28px rgba(220,38,38,0.4); }
+    /* Per-league reset buttons */
+    .lig-reset-group { display:flex; gap:6px; margin-top:10px; }
+    .btn-lig-reset-sezon { flex:1; padding:5px 8px; border-radius:7px; font-size:0.68rem; font-weight:700; text-align:center; cursor:pointer; border:1px solid rgba(251,191,36,0.4); background:rgba(120,80,0,0.3); color:#fde047 !important; transition:all .2s; }
+    .btn-lig-reset-sezon:hover { background:rgba(202,138,4,0.5); border-color:#ca8a04; }
+    .btn-lig-reset-tum { flex:1; padding:5px 8px; border-radius:7px; font-size:0.68rem; font-weight:700; text-align:center; cursor:pointer; border:1px solid rgba(220,38,38,0.4); background:rgba(127,29,29,0.3); color:#fca5a5 !important; transition:all .2s; }
+    .btn-lig-reset-tum:hover { background:rgba(185,28,28,0.5); border-color:#b91c1c; }
+    /* Reset success message */
+    .reset-mesaj { background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.4); border-radius:10px; padding:12px 16px; margin-bottom:20px; font-size:0.88rem; color:#fde047; }
     /* Section label */
     .section-lbl { font-family:'Oswald',sans-serif; font-size:0.85rem; color:#94a3b8; letter-spacing:2px; text-transform:uppercase; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
 </style>
@@ -444,10 +460,29 @@ unset($_SESSION['play_week_sonuc']);
     </div>
     <?php endif; ?>
 
+    <?php if (!empty($sifirla_mesaj)): ?>
+    <div class="reset-mesaj mb-4">
+        <i class="fa-solid fa-rotate-left me-2"></i><?= $sifirla_mesaj ?>
+    </div>
+    <?php endif; ?>
+
     <!-- LİG DURUM KARTLARI -->
     <div class="section-lbl"><i class="fa-solid fa-earth-europe me-2"></i>Mevcut Hafta Durumu</div>
+    <?php
+    // Lig kodu eşleştirmesi (lig adı → sezon_sifirla.php lig kodu)
+    $lig_kod_map = [
+        'Süper Lig'      => 'superlig',
+        'Premier League' => 'premier_league',
+        'La Liga'        => 'la_liga',
+        'Bundesliga'     => 'bundesliga',
+        'Serie A'        => 'serie_a',
+        'Ligue 1'        => 'ligue1',
+        'Liga NOS'       => 'liga_nos',
+    ];
+    ?>
     <div class="lig-grid mb-4">
         <?php foreach ($durum_listesi as $d): ?>
+        <?php $lig_kod_d = $lig_kod_map[$d['ad']] ?? ''; ?>
         <div class="lig-kart <?= $d['tamam'] ? 'bitti' : '' ?>">
             <?php if ($d['tamam']): ?><div class="done-badge"><i class="fa-solid fa-check me-1"></i>Tamamlandı</div><?php endif; ?>
             <div class="d-flex align-items-center gap-2 mb-1">
@@ -461,6 +496,27 @@ unset($_SESSION['play_week_sonuc']);
             <div class="lig-bar-bg">
                 <div class="lig-bar" style="width:<?= round($d['hafta'] / $d['max'] * 100) ?>%;"></div>
             </div>
+            <?php if (!empty($lig_kod_d)): ?>
+            <!-- Per-league reset buttons -->
+            <div class="lig-reset-group">
+                <form method="POST" action="sezon_sifirla.php" onsubmit="return confirm('Bu sezonu sıfırla?\n\n<?= htmlspecialchars($d['ad'], ENT_QUOTES) ?> — Mevcut fikstür, puan tablosu ve maç sonuçları silinecek. Geçmiş sezon şampiyonları korunacak.');" style="flex:1;">
+                    <input type="hidden" name="lig" value="<?= htmlspecialchars($lig_kod_d) ?>">
+                    <input type="hidden" name="mod" value="bu_sezon">
+                    <input type="hidden" name="onay" value="1">
+                    <button type="submit" class="btn-lig-reset-sezon w-100">
+                        <i class="fa-solid fa-broom me-1"></i>Bu Sezonu Sıfırla
+                    </button>
+                </form>
+                <form method="POST" action="sezon_sifirla.php" onsubmit="return confirm('⚠️ TÜM SEZONLARI SIFIRLA!\n\n<?= htmlspecialchars($d['ad'], ENT_QUOTES) ?> — LİGİN TÜM GEÇMİŞİ, ŞAMPİYON KAYITLARI ve TÜM VERİLER silinecek.\n\nBu işlem geri alınamaz! Emin misiniz?');" style="flex:1;">
+                    <input type="hidden" name="lig" value="<?= htmlspecialchars($lig_kod_d) ?>">
+                    <input type="hidden" name="mod" value="tum_sezon">
+                    <input type="hidden" name="onay" value="1">
+                    <button type="submit" class="btn-lig-reset-tum w-100">
+                        <i class="fa-solid fa-fire me-1"></i>Tüm Sezonları Sıfırla
+                    </button>
+                </form>
+            </div>
+            <?php endif; ?>
         </div>
         <?php endforeach; ?>
         <?php if (empty($durum_listesi)): ?>
