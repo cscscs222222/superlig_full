@@ -430,7 +430,7 @@ class MatchEngine {
         $var_olaylar = [];
         if (mt_rand(1, 100) <= 5) {
             $var_dk  = mt_rand(15, 88);
-            $var_tip = (mt_rand(0, 1) == 0) ? 'var_gol_iptal' : 'var_kırmızı_inceleme';
+            $var_tip = (mt_rand(0, 1) == 0) ? 'var_gol_iptal' : 'var_kirmizi_inceleme';
 
             if ($var_tip === 'var_gol_iptal' && count($olaylar) > 0) {
                 // Gol içeren son olayı bul ve VAR ile iptal et
@@ -449,14 +449,14 @@ class MatchEngine {
                         'neden'  => 'marginal_ofsayt',
                     ];
                 }
-            } elseif ($var_tip === 'var_kırmızı_inceleme' && !empty($oyuncular)) {
+            } elseif ($var_tip === 'var_kirmizi_inceleme' && !empty($oyuncular)) {
                 // VAR inceleme: kırmızı kart riskli faul review (kart eklenmez, sadece bilgi)
                 $hedef = $oyuncular[array_rand($oyuncular)]['isim'];
                 $var_olaylar[] = [
-                    'tip'    => 'var_kırmızı_inceleme',
+                    'tip'    => 'var_kirmizi_inceleme',
                     'dakika' => $var_dk,
                     'oyuncu' => $hedef,
-                    'neden'  => 'kırmızı_kart_inceleme',
+                    'neden'  => 'kirmizi_kart_inceleme',
                 ];
             }
         }
@@ -511,12 +511,13 @@ class MatchEngine {
         $kirmizi_kart_sayisi = count(array_filter($kartlar, fn($k) => in_array($k['detay'], ['Kırmızı', 'Sarı → Kırmızı'])));
         // xG: gercekci_skor_hesapla()'dan geçirildiyse kullan, yoksa şutlardan tahmin et
         $post_xg = ($xg >= 0.0) ? round($xg, 2) : round($toplam_sut * 0.105, 2);
+        $faul_carpani = mt_rand(2, 4);
         $mac_istatistik = [
             'sut'          => $toplam_sut,
             'isabetli_sut' => $isabetli_sut,
             'xg'           => $post_xg,
             'korner'       => mt_rand(3, 8),
-            'faul'         => $sari_kart_sayisi * mt_rand(2, 4) + mt_rand(2, 5),
+            'faul'         => $sari_kart_sayisi * $faul_carpani + mt_rand(2, 5),
             'ofsayt'       => mt_rand(1, 5),
             'sari_kart'    => $sari_kart_sayisi,
             'kirmizi_kart' => $kirmizi_kart_sayisi,
