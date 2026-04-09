@@ -179,7 +179,26 @@ if($mac_sayisi == 0) {
 // --- AKSİYON YÖNETİMİ ---
 if(isset($_GET['action'])) {
     $action = $_GET['action'];
-    
+
+    // BU SEZONU SIFIRLA
+    if($action == 'bu_sezon_sifirla') {
+        $pdo->exec("TRUNCATE TABLE de_maclar");
+        $pdo->exec("UPDATE de_takimlar SET puan=0, galibiyet=0, beraberlik=0, malubiyet=0, atilan_gol=0, yenilen_gol=0");
+        $pdo->exec("UPDATE de_oyuncular SET sezon_gol=0, sezon_asist=0, form=6, fitness=100, moral=80, ceza_hafta=0, sakatlik_hafta=0, mac_puani_ort=6.00");
+        $pdo->exec("UPDATE de_ayar SET hafta=1");
+        header("Location: bundesliga.php?sifirla=bu_sezon"); exit;
+    }
+
+    // TÜM SEZONLARI SIFIRLA
+    if($action == 'tum_sezon_sifirla') {
+        $pdo->exec("TRUNCATE TABLE de_maclar");
+        $pdo->exec("UPDATE de_takimlar SET puan=0, galibiyet=0, beraberlik=0, malubiyet=0, atilan_gol=0, yenilen_gol=0");
+        $pdo->exec("UPDATE de_oyuncular SET sezon_gol=0, sezon_asist=0, toplam_mac=0, toplam_gol=0, form=6, fitness=100, moral=80, ceza_hafta=0, sakatlik_hafta=0, mac_puani_ort=6.00");
+        try { $pdo->exec("UPDATE de_ayar SET hafta=1, sezon_yil=2025, gecen_sezon_sampiyon=NULL"); } catch(Throwable $e) { $pdo->exec("UPDATE de_ayar SET hafta=1, sezon_yil=2025"); }
+        try { $pdo->exec("TRUNCATE TABLE de_haberler"); } catch(Throwable $e) {}
+        header("Location: bundesliga.php?sifirla=tum_sezon"); exit;
+    }
+
     if($action == 'takim_sec' && isset($_GET['tid'])) {
         $tid = (int)$_GET['tid'];
         $pdo->exec("UPDATE de_ayar SET kullanici_takim_id = $tid WHERE id=1");
@@ -443,6 +462,16 @@ try {
 
         .hover-lift { transition: 0.3s; cursor: pointer; }
         .hover-lift:hover { transform: translateY(-5px); }
+        /* Puan tablosu kontrast düzeltmesi */
+        body, table, td, th, .puan-tablosu, .sira, .puan { color: #ffffff !important; background-color: #1a1a1a; }
+        /* Reset buton stilleri */
+        .btn-reset-sezon { background:rgba(120,60,0,0.35); border:1px solid rgba(251,191,36,0.5); color:#fde047 !important; font-weight:700; padding:6px 12px; border-radius:5px; font-size:0.78rem; text-decoration:none; transition:0.2s; }
+        .btn-reset-sezon:hover { background:rgba(202,138,4,0.5); border-color:#ca8a04; }
+        .btn-reset-tum { background:rgba(127,29,29,0.35); border:1px solid rgba(220,38,38,0.5); color:#fca5a5 !important; font-weight:700; padding:6px 12px; border-radius:5px; font-size:0.78rem; text-decoration:none; transition:0.2s; }
+        .btn-reset-tum:hover { background:rgba(185,28,28,0.5); border-color:#b91c1c; }
+        .reset-alert { padding:10px 16px; border-radius:8px; margin:0 0 12px; font-size:0.85rem; font-weight:600; }
+        .reset-alert.success { background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); color:#6ee7b7 !important; }
+        .reset-alert.warning { background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.4); color:#fde047 !important; }
         
         @keyframes pulse_glow {
             0% { box-shadow: 0 0 10px rgba(220,38,38,0.5); }
@@ -486,9 +515,21 @@ try {
                     <i class="fa-solid fa-forward-step"></i> Sezonu Simüle Et
                 </a>
                 <?php endif; ?>
+                <a href="?action=bu_sezon_sifirla" class="btn-reset-sezon" onclick="return confirm('Bu sezonu sıfırla?\n\nBundesliga mevcut fikstür, puan tablosu ve maç sonuçları silinecek.')"><i class="fa-solid fa-broom me-1"></i>Bu Sezonu Sıfırla</a>
+                <a href="?action=tum_sezon_sifirla" class="btn-reset-tum" onclick="return confirm('⚠️ TÜM SEZONLARI SIFIRLA!\n\nBundesliga TÜM GEÇMİŞİ silinecek!\n\nBu işlem geri alınamaz!')"><i class="fa-solid fa-fire me-1"></i>Tüm Sezonları Sıfırla</a>
             <?php endif; ?>
         </div>
     </nav>
+
+    <?php if(isset($_GET['sifirla'])): ?>
+    <div class="container-fluid px-4 pt-3">
+        <?php if($_GET['sifirla'] === 'bu_sezon'): ?>
+        <div class="reset-alert success"><i class="fa-solid fa-check-circle me-2"></i>✅ Bu sezon sıfırlandı. Fikstür, puan tablosu ve maç sonuçları temizlendi.</div>
+        <?php elseif($_GET['sifirla'] === 'tum_sezon'): ?>
+        <div class="reset-alert warning"><i class="fa-solid fa-rotate-left me-2"></i>🔄 Tüm sezonlar sıfırlandı. Bundesliga geçmişi fabrika ayarlarına döndürüldü.</div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
     <?php if($sezon_tamam && $sampiyon_takim): ?>
     <div class="container-fluid py-3 px-4">

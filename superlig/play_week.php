@@ -204,7 +204,7 @@ function sampiyon_blok_olustur(string $lig_adi, string $takim_adi, string $lig_k
 // LİG / TURNUVA TANIMI
 // ================================================================
 $ligler = [
-    ['prefix' => '',     'maclar' => 'maclar',     'takimlar' => 'takimlar',     'ayar' => 'ayar',     'max' => 38, 'ad' => 'Süper Lig',       'kod' => 'superlig'],
+    ['prefix' => '',     'maclar' => 'maclar',     'takimlar' => 'takimlar',     'ayar' => 'ayar',     'max' => 34, 'ad' => 'Süper Lig',       'kod' => 'superlig'],
     ['prefix' => 'pl_',  'maclar' => 'pl_maclar',  'takimlar' => 'pl_takimlar',  'ayar' => 'pl_ayar',  'max' => 38, 'ad' => 'Premier League',   'kod' => 'premier_league'],
     ['prefix' => 'es_',  'maclar' => 'es_maclar',  'takimlar' => 'es_takimlar',  'ayar' => 'es_ayar',  'max' => 38, 'ad' => 'La Liga',           'kod' => 'la_liga'],
     ['prefix' => 'de_',  'maclar' => 'de_maclar',  'takimlar' => 'de_takimlar',  'ayar' => 'de_ayar',  'max' => 34, 'ad' => 'Bundesliga',        'kod' => 'bundesliga'],
@@ -382,6 +382,7 @@ unset($_SESSION['sezon_sifirla_mesaj']);
     :root { --gold:#d4af37; --bg:#050505; --panel:rgba(255,255,255,0.05); --border:rgba(255,255,255,0.1); }
     /* --- YÜKSEK KONTRAST / DARK MODE OVERRIDE --- */
     body, p, h1, h2, h3, h4, h5, h6, span, label, li, td, th { color: #ffffff !important; }
+    body, table, td, th, .puan-tablosu, .sira, .puan { color: #ffffff !important; background-color: #1a1a1a; }
     body { background:var(--bg) !important; color:#fff !important; font-family:'Poppins',sans-serif; min-height:100vh; }
     .font-oswald { font-family:'Oswald',sans-serif; text-transform:uppercase; }
     /* Navbar */

@@ -16,9 +16,9 @@ $ayar = $pdo->query("SELECT * FROM ayar LIMIT 1")->fetch(PDO::FETCH_ASSOC);
 $hafta = $ayar['hafta'] ?? 1;
 $sezon_yili = $ayar['sezon_yil'] ?? 2025;
 $kullanici_takim = $ayar['kullanici_takim_id'] ?? null;
-$max_hafta = 38;
+$max_hafta = 34; // Süper Lig: 18 takım, çift devreli = 34 hafta
 
-// --- FİKSTÜR OLUŞTUR (Süper Lig - 20 takım, çift devreli = 38 hafta) ---
+// --- FİKSTÜR OLUŞTUR (Süper Lig - 18 takım, çift devreli = 34 hafta) ---
 $mac_sayisi = 0;
 try { $mac_sayisi = $pdo->query("SELECT COUNT(*) FROM maclar WHERE sezon_yil = $sezon_yili")->fetchColumn(); } catch(Throwable $e) {}
 if($mac_sayisi == 0) {
@@ -245,6 +245,8 @@ try {
         /* --- YÜKSEK KONTRAST / DARK MODE OVERRIDE --- */
         body, p, h1, h2, h3, h4, h5, h6, span, label, li { color: #f8fafc !important; }
         td, th { color: #f8fafc !important; }
+        /* Puan tablosu kontrast düzeltmesi */
+        body, table, td, th, .puan-tablosu, .sira, .puan { color: #ffffff !important; background-color: #1a1a1a; }
 
         body { background-color: var(--bg-body) !important; color: #f8fafc !important; font-family: 'Inter', sans-serif; }
         .font-oswald { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
@@ -434,7 +436,7 @@ try {
                                         $row_class = "";
                                         if($sira <= 2) $row_class = "zone-cl"; 
                                         elseif($sira <= 4) $row_class = "zone-el"; 
-                                        elseif($sira >= 17) $row_class = "zone-rel"; 
+                                        elseif($sira >= 16) $row_class = "zone-rel"; 
                                         
                                         if($t['id'] == $kullanici_takim) $row_class .= " my-team-row";
                                         
