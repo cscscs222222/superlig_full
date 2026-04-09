@@ -164,6 +164,25 @@ if($mac_sayisi == 0) {
 if(isset($_GET['action'])) {
     $action = $_GET['action'];
 
+    if($action == 'sezonu_simule') {
+        for($h = $hafta; $h <= $max_hafta; $h++) {
+            $maclar_h = $pdo->query("SELECT m.*,t1.hucum as ev_hucum,t1.savunma as ev_savunma,t2.hucum as dep_hucum,t2.savunma as dep_savunma FROM fr_maclar m JOIN fr_takimlar t1 ON m.ev=t1.id JOIN fr_takimlar t2 ON m.dep=t2.id WHERE m.hafta=$h AND m.ev_skor IS NULL")->fetchAll(PDO::FETCH_ASSOC);
+            foreach($maclar_h as $m) {
+                $s=$engine->gercekci_skor_hesapla($m['ev'],$m['dep'],$m);
+                $es=$s['ev']; $ds=$s['dep'];
+                $ed=$engine->mac_olay_uret($m['ev'],$es); $dd=$engine->mac_olay_uret($m['dep'],$ds);
+                $pdo->prepare("UPDATE fr_maclar SET ev_skor=?,dep_skor=?,ev_olaylar=?,dep_olaylar=?,ev_kartlar=?,dep_kartlar=? WHERE id=?")->execute([$es,$ds,$ed['olaylar'],$dd['olaylar'],$ed['kartlar'],$dd['kartlar'],$m['id']]);
+                $pdo->exec("UPDATE fr_takimlar SET atilan_gol=atilan_gol+$es,yenilen_gol=yenilen_gol+$ds WHERE id={$m['ev']}");
+                $pdo->exec("UPDATE fr_takimlar SET atilan_gol=atilan_gol+$ds,yenilen_gol=yenilen_gol+$es WHERE id={$m['dep']}");
+                if($es>$ds){$pdo->exec("UPDATE fr_takimlar SET puan=puan+3,galibiyet=galibiyet+1 WHERE id={$m['ev']}");$pdo->exec("UPDATE fr_takimlar SET malubiyet=malubiyet+1 WHERE id={$m['dep']}");}
+                elseif($es==$ds){$pdo->exec("UPDATE fr_takimlar SET puan=puan+1,beraberlik=beraberlik+1 WHERE id IN ({$m['ev']},{$m['dep']})");}
+                else{$pdo->exec("UPDATE fr_takimlar SET puan=puan+3,galibiyet=galibiyet+1 WHERE id={$m['dep']}");$pdo->exec("UPDATE fr_takimlar SET malubiyet=malubiyet+1 WHERE id={$m['ev']}");}
+            }
+        }
+        $pdo->exec("UPDATE fr_ayar SET hafta=$max_hafta");
+        header("Location: ligue1.php?sezon_bitti=1"); exit;
+    }
+
     if($action == 'takim_sec' && isset($_GET['tid'])) {
         $tid = (int)$_GET['tid'];
         $pdo->exec("UPDATE fr_ayar SET kullanici_takim_id = $tid WHERE id=1");
@@ -339,24 +358,30 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
         <a href="?action=tek_mac_simule&mac_id=<?=$benim_macim_id?>&hafta=<?=$goster_hafta?>" class="btn-ap"><i class="fa-solid fa-play"></i> Maçıma Çık</a>
         <?php endif; ?>
         <a href="?action=hafta" class="btn-ao"><i class="fa-solid fa-forward"></i> Haftayı Oyna</a>
+        <?php if(!$sezon_tamam): ?>
+        <a href="?action=sezonu_simule" class="btn-ao" style="background:#7f1d1d;border-color:#dc2626;color:#fca5a5;" onclick="return confirm('Ligue 1 sezonu simüle edilecek. Devam?')"><i class="fa-solid fa-forward-step"></i> Sezonu Simüle Et</a>
+        <?php endif; ?>
     </div>
 </nav>
 
 <div class="container-fluid py-4 px-4">
 
     <?php if($sezon_tamam && $sampiyon_takim): ?>
-    <!-- ŞAMPİYON BLO -->
+    <!-- ŞAMPİYON BLOKU -->
     <div class="sampiyon-blok">
-        <div class="blok-bar">█████████████████████████████████</div>
-        <div class="sampiyon-text">🏆 LİGUE 1 ŞAMPİYONU: <?=htmlspecialchars($sampiyon_takim['takim_adi'])?> 🏆</div>
-        <div class="blok-bar">█████████████████████████████████</div>
+        <div class="blok-bar">=============================================</div>
+        <div class="sampiyon-text">🏆 LİGUE 1 <?=$sezon_yili?>/<?=$sezon_yili+1?> SEZONU ŞAMPİYONU 🏆</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:1.6rem;font-weight:900;color:var(--fr-gold);margin:8px 0;">★ <?=htmlspecialchars($sampiyon_takim['takim_adi'])?> ★</div>
+        <div class="blok-bar">=============================================</div>
+        <div style="color:#d1fae5;font-size:0.9rem;margin-top:10px;">Tebrikler! <?=htmlspecialchars($sampiyon_takim['takim_adi'])?>, ligi şampiyon olarak tamamladı.</div>
         <div class="sampiyon-top4 mt-3">
-            <div style="font-size:0.8rem;color:var(--fr-gold);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Final Puan Tablosu — İlk 4</div>
-            <?php foreach(array_slice($puan_durumu,0,4) as $idx=>$st): ?>
+            <div style="font-size:0.8rem;color:var(--fr-gold);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Final Puan Tablosu — İlk 5</div>
+            <?php foreach(array_slice($puan_durumu,0,5) as $idx=>$st): $ag=$st['atilan_gol']-$st['yenilen_gol']; ?>
             <div class="top4-row">
                 <span style="font-family:'Oswald';font-weight:700;color:var(--fr-gold);width:24px;"><?=$idx+1?></span>
                 <img src="<?=htmlspecialchars($st['logo']??'')?>" style="width:22px;height:22px;object-fit:contain;" onerror="this.style.display='none'">
                 <span style="flex:1;font-weight:600;"><?=htmlspecialchars($st['takim_adi'])?></span>
+                <span style="color:var(--muted);font-size:0.7rem;margin-right:4px;">AV:<?=($ag>=0?'+':'')?><?=$ag?></span>
                 <span style="font-family:'Oswald';font-weight:900;color:var(--fr-gold);"><?=$st['puan']?> P</span>
             </div>
             <?php endforeach; ?>
