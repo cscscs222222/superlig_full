@@ -164,25 +164,31 @@ function get_puan_tablosu_ozet($pdo, $takimlar_tbl, $toplam_takim = 0): string {
 // ================================================================
 // YARDIMCI FONKSİYON: Şampiyon UI bloğu oluştur
 // ================================================================
-function sampiyon_blok_olustur(string $lig_adi, string $takim_adi, string $lig_kod, array $top4): string {
-    $blok = '<div style="background:linear-gradient(135deg,#1e3a5f,#7f1d1d);border:2px solid #d4af37;border-radius:12px;padding:20px 24px;margin:12px 0;">';
-    $blok .= '<div style="font-family:monospace;color:#d4af37;font-size:0.8rem;">█████████████████████████████████</div>';
-    $blok .= '<div style="font-family:\'Oswald\',sans-serif;font-size:1.4rem;font-weight:900;color:#fff;margin:10px 0;">'
-           . '🏆 ' . htmlspecialchars($lig_adi) . ' ŞAMPİYONU: ' . htmlspecialchars($takim_adi) . ' 🏆</div>';
-    $blok .= '<div style="font-family:monospace;color:#d4af37;font-size:0.8rem;">█████████████████████████████████</div>';
-    if (!empty($top4)) {
-        $blok .= '<div style="margin-top:12px;font-size:0.8rem;">';
-        $blok .= '<div style="color:#d4af37;font-weight:700;margin-bottom:6px;text-transform:uppercase;font-size:0.72rem;">Final Tablosu — İlk 4</div>';
-        foreach ($top4 as $i => $t) {
+function sampiyon_blok_olustur(string $lig_adi, string $takim_adi, string $lig_kod, array $top5, int $sezon_yili = 2025): string {
+    $sezon_str = $sezon_yili . '/' . ($sezon_yili + 1);
+    $blok = '<div style="background:linear-gradient(135deg,#1e3a5f,#7f1d1d);border:2px solid #d4af37;border-radius:12px;padding:20px 24px;margin:12px 0;text-align:center;">';
+    $blok .= '<div style="font-family:monospace;color:#d4af37;font-size:0.82rem;letter-spacing:0;">=============================================</div>';
+    $blok .= '<div style="font-family:\'Oswald\',sans-serif;font-size:1.3rem;font-weight:900;color:#fff;margin:8px 0;">'
+           . '🏆 ' . htmlspecialchars($lig_adi) . ' ' . htmlspecialchars($sezon_str) . ' SEZONU ŞAMPİYONU 🏆</div>';
+    $blok .= '<div style="font-family:\'Oswald\',sans-serif;font-size:1.6rem;font-weight:900;color:#d4af37;margin:6px 0;">★ ' . htmlspecialchars($takim_adi) . ' ★</div>';
+    $blok .= '<div style="font-family:monospace;color:#d4af37;font-size:0.82rem;letter-spacing:0;">=============================================</div>';
+    $blok .= '<div style="color:#d1fae5;font-size:0.9rem;margin-top:10px;">Tebrikler! ' . htmlspecialchars($takim_adi) . ', ligi şampiyon olarak tamamladı.</div>';
+    if (!empty($top5)) {
+        $blok .= '<div style="margin-top:12px;font-size:0.8rem;text-align:left;">';
+        $blok .= '<div style="color:#d4af37;font-weight:700;margin-bottom:6px;text-transform:uppercase;font-size:0.72rem;">Final Tablosu — İlk 5</div>';
+        foreach ($top5 as $i => $t) {
+            $av = (int)$t['atilan_gol'] - (int)$t['yenilen_gol'];
+            $avStr = ($av >= 0 ? '+' : '') . $av;
             $blok .= '<div style="display:flex;gap:8px;padding:3px 0;color:#fff;">'
                    . '<span style="width:20px;color:#d4af37;font-weight:700;">' . ($i+1) . '</span>'
                    . '<span style="flex:1;">' . htmlspecialchars($t['takim_adi']) . '</span>'
+                   . '<span style="color:#94a3b8;font-size:0.7rem;margin-right:4px;">AV:' . $avStr . '</span>'
                    . '<span style="color:#d4af37;font-weight:900;">' . $t['puan'] . 'P</span>'
                    . '</div>';
         }
         $blok .= '</div>';
     }
-    $blok .= '<div style="background:rgba(0,0,0,0.4);border:1px solid rgba(212,175,55,0.3);border-radius:6px;padding:10px 14px;margin-top:12px;font-family:monospace;font-size:0.78rem;color:#a3e635;">';
+    $blok .= '<div style="background:rgba(0,0,0,0.4);border:1px solid rgba(212,175,55,0.3);border-radius:6px;padding:10px 14px;margin-top:12px;font-family:monospace;font-size:0.78rem;color:#a3e635;text-align:left;">';
     $blok .= '<div style="color:#94a3b8;margin-bottom:4px;">// index.php için son şampiyon güncellemesi</div>';
     $blok .= '$son_sampiyon[\'' . htmlspecialchars($lig_kod) . '\'] = "' . htmlspecialchars($takim_adi) . '";';
     $blok .= '</div>';
@@ -250,12 +256,14 @@ if (isset($_POST['global_hafta_oyna'])) {
                 // Şampiyonu belirle
                 $top_rows = $pdo->query(
                     "SELECT takim_adi, puan, atilan_gol, yenilen_gol FROM {$lig['takimlar']}
-                      ORDER BY puan DESC, (atilan_gol-yenilen_gol) DESC, atilan_gol DESC LIMIT 4"
+                      ORDER BY puan DESC, (atilan_gol-yenilen_gol) DESC, atilan_gol DESC LIMIT 5"
                 )->fetchAll(PDO::FETCH_ASSOC);
                 if (!empty($top_rows)) {
                     $sampiyon_adi = $top_rows[0]['takim_adi'];
                     $lig_kod = $lig['kod'] ?? strtolower(str_replace(' ', '_', $lig['ad']));
-                    $sonuc_mesajlari[] = sampiyon_blok_olustur($lig['ad'], $sampiyon_adi, $lig_kod, $top_rows);
+                    $sezon_y = 0;
+                    try { $sezon_y = (int)$pdo->query("SELECT sezon_yil FROM {$lig['ayar']} LIMIT 1")->fetchColumn(); } catch(Throwable $e) {}
+                    $sonuc_mesajlari[] = sampiyon_blok_olustur($lig['ad'], $sampiyon_adi, $lig_kod, $top_rows, $sezon_y ?: 2025);
                 }
             }
         } catch (Throwable $e) {}
@@ -282,6 +290,11 @@ if (isset($_POST['tum_sezonu_simule'])) {
             $hafta_baslangic = (int)$hafta_row;
         } catch (Throwable $e) { continue; }
 
+        // İlerleme mesajı
+        $sezon_sampiyonlar[] = '<div style="color:#94a3b8;font-size:0.85rem;padding:4px 0;">'
+            . '<i class="fa-solid fa-rotate fa-spin me-2"></i>'
+            . htmlspecialchars($lig['ad']) . ' sezonu simüle ediliyor…</div>';
+
         $engine = new MatchEngine($pdo, $lig['prefix']);
         for ($h = $hafta_baslangic; $h <= $lig['max']; $h++) {
             simulate_league_week(
@@ -298,13 +311,15 @@ if (isset($_POST['tum_sezonu_simule'])) {
 
         // Şampiyonu belirle
         try {
+            $sezon_y = 2025;
+            try { $sezon_y = (int)$pdo->query("SELECT sezon_yil FROM {$lig['ayar']} LIMIT 1")->fetchColumn(); } catch(Throwable $e2) {}
             $top_rows = $pdo->query(
                 "SELECT takim_adi, puan, atilan_gol, yenilen_gol FROM {$lig['takimlar']}
-                  ORDER BY puan DESC, (atilan_gol-yenilen_gol) DESC, atilan_gol DESC LIMIT 4"
+                  ORDER BY puan DESC, (atilan_gol-yenilen_gol) DESC, atilan_gol DESC LIMIT 5"
             )->fetchAll(PDO::FETCH_ASSOC);
             if (!empty($top_rows)) {
                 $lig_kod = $lig['kod'] ?? strtolower(str_replace(' ', '_', $lig['ad']));
-                $sezon_sampiyonlar[] = sampiyon_blok_olustur($lig['ad'], $top_rows[0]['takim_adi'], $lig_kod, $top_rows);
+                $sezon_sampiyonlar[] = sampiyon_blok_olustur($lig['ad'], $top_rows[0]['takim_adi'], $lig_kod, $top_rows, $sezon_y);
             }
         } catch (Throwable $e) {}
     }

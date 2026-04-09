@@ -271,6 +271,26 @@ if(isset($_GET['action'])) {
         }
         header("Location: la_liga.php"); exit;
     }
+
+    if($action == 'sezonu_simule') {
+        for($h = $hafta; $h <= $max_hafta; $h++) {
+            $maclar_h = $pdo->query("SELECT m.id, m.ev, m.dep, t1.hucum as ev_hucum, t1.savunma as ev_savunma, t2.hucum as dep_hucum, t2.savunma as dep_savunma FROM es_maclar m JOIN es_takimlar t1 ON m.ev=t1.id JOIN es_takimlar t2 ON m.dep=t2.id WHERE m.hafta=$h AND m.ev_skor IS NULL")->fetchAll(PDO::FETCH_ASSOC);
+            foreach($maclar_h as $m) {
+                $skorlar = $engine->gercekci_skor_hesapla($m['ev'], $m['dep'], $m);
+                $ev_skor = $skorlar['ev']; $dep_skor = $skorlar['dep'];
+                $ev_detay = $engine->mac_olay_uret($m['ev'], $ev_skor);
+                $dep_detay = $engine->mac_olay_uret($m['dep'], $dep_skor);
+                $pdo->prepare("UPDATE es_maclar SET ev_skor=?,dep_skor=?,ev_olaylar=?,dep_olaylar=?,ev_kartlar=?,dep_kartlar=? WHERE id=?")->execute([$ev_skor,$dep_skor,$ev_detay['olaylar'],$dep_detay['olaylar'],$ev_detay['kartlar'],$dep_detay['kartlar'],$m['id']]);
+                $pdo->exec("UPDATE es_takimlar SET atilan_gol=atilan_gol+$ev_skor,yenilen_gol=yenilen_gol+$dep_skor WHERE id={$m['ev']}");
+                $pdo->exec("UPDATE es_takimlar SET atilan_gol=atilan_gol+$dep_skor,yenilen_gol=yenilen_gol+$ev_skor WHERE id={$m['dep']}");
+                if($ev_skor>$dep_skor){$pdo->exec("UPDATE es_takimlar SET puan=puan+3,galibiyet=galibiyet+1 WHERE id={$m['ev']}");$pdo->exec("UPDATE es_takimlar SET malubiyet=malubiyet+1 WHERE id={$m['dep']}");}
+                elseif($ev_skor==$dep_skor){$pdo->exec("UPDATE es_takimlar SET puan=puan+1,beraberlik=beraberlik+1 WHERE id IN ({$m['ev']},{$m['dep']})");}
+                else{$pdo->exec("UPDATE es_takimlar SET puan=puan+3,galibiyet=galibiyet+1 WHERE id={$m['dep']}");$pdo->exec("UPDATE es_takimlar SET malubiyet=malubiyet+1 WHERE id={$m['ev']}");}
+            }
+        }
+        $pdo->exec("UPDATE es_ayar SET hafta=$max_hafta");
+        header("Location: la_liga.php?sezon_bitti=1"); exit;
+    }
 }
 
 // --- VERİ ÇEKİMİ ---
@@ -287,6 +307,17 @@ $benim_macim_id = null;
 if($kullanici_takim) {
     $benim_macim_id = $pdo->query("SELECT id FROM es_maclar WHERE hafta=$goster_hafta AND ev_skor IS NULL AND (ev=$kullanici_takim OR dep=$kullanici_takim)")->fetchColumn();
 }
+
+$sezon_tamam = false;
+$sampiyon_takim = null;
+try {
+    $toplam_mac_es = $pdo->query("SELECT COUNT(*) FROM es_maclar WHERE sezon_yil=$sezon_yili")->fetchColumn();
+    $kalan_es = $pdo->query("SELECT COUNT(*) FROM es_maclar WHERE sezon_yil=$sezon_yili AND ev_skor IS NULL")->fetchColumn();
+    if($toplam_mac_es > 0 && $kalan_es == 0 && $hafta >= $max_hafta) {
+        $sezon_tamam = true;
+        $sampiyon_takim = $puan_durumu[0] ?? null;
+    }
+} catch(Throwable $e) {}
 ?>
 
 <!DOCTYPE html>
@@ -452,9 +483,42 @@ if($kullanici_takim) {
                 <a href="?action=hafta" class="btn-action-outline">
                     <i class="fa-solid fa-forward-fast"></i> Haftayı Oyna
                 </a>
+                <?php if(!$sezon_tamam): ?>
+                <a href="?action=sezonu_simule" class="btn-action-outline" style="background:#7f1d1d;border-color:#dc2626;color:#fca5a5;" onclick="return confirm('La Liga sezonu simüle edilecek. Devam?')">
+                    <i class="fa-solid fa-forward-step"></i> Sezonu Simüle Et
+                </a>
+                <?php endif; ?>
             <?php endif; ?>
         </div>
     </nav>
+
+    <?php if($sezon_tamam && $sampiyon_takim): ?>
+    <div class="container-fluid py-3 px-4">
+        <div style="background:linear-gradient(135deg,#1a0008,#7f1d1d);border:2px solid #f5c518;border-radius:12px;padding:20px 24px;margin-bottom:16px;text-align:center;">
+            <div style="font-family:monospace;color:#f5c518;font-size:0.82rem;">=============================================</div>
+            <div style="font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:900;color:#fff;margin:8px 0;">🏆 LA LİGA <?=$sezon_yili?>/<?=$sezon_yili+1?> SEZONU ŞAMPİYONU 🏆</div>
+            <div style="font-family:'Oswald',sans-serif;font-size:1.6rem;font-weight:900;color:#f5c518;margin:6px 0;">★ <?=htmlspecialchars($sampiyon_takim['takim_adi'])?> ★</div>
+            <div style="font-family:monospace;color:#f5c518;font-size:0.82rem;">=============================================</div>
+            <div style="color:#d1fae5;font-size:0.9rem;margin-top:10px;">Tebrikler! <?=htmlspecialchars($sampiyon_takim['takim_adi'])?>, ligi şampiyon olarak tamamladı.</div>
+            <div style="margin-top:12px;font-size:0.8rem;max-width:400px;margin-left:auto;margin-right:auto;text-align:left;">
+                <div style="color:#f5c518;font-weight:700;margin-bottom:6px;text-transform:uppercase;font-size:0.72rem;">Final Tablosu — İlk 5</div>
+                <?php foreach(array_slice($puan_durumu,0,5) as $idx=>$st): $ag=$st['atilan_gol']-$st['yenilen_gol']; ?>
+                <div style="display:flex;gap:8px;padding:3px 0;color:#fff;border-bottom:1px solid rgba(255,255,255,0.1);">
+                    <span style="width:20px;color:#f5c518;font-weight:700;"><?=$idx+1?></span>
+                    <img src="<?=htmlspecialchars($st['logo']??'')?>" style="width:22px;height:22px;object-fit:contain;" onerror="this.style.display='none'">
+                    <span style="flex:1;"><?=htmlspecialchars($st['takim_adi'])?></span>
+                    <span style="color:#94a3b8;font-size:0.7rem;margin-right:4px;">AV:<?=($ag>=0?'+':'')?><?=$ag?></span>
+                    <span style="color:#f5c518;font-weight:900;"><?=$st['puan']?>P</span>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(245,197,24,0.3);border-radius:6px;padding:10px 14px;margin-top:12px;font-family:monospace;font-size:0.78rem;color:#a3e635;text-align:left;max-width:400px;margin-left:auto;margin-right:auto;">
+                <div style="color:#94a3b8;margin-bottom:4px;">// index.php için son şampiyon güncellemesi</div>
+                $son_sampiyon['la_liga'] = "<?=htmlspecialchars($sampiyon_takim['takim_adi'])?>";
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <?php if(!$kullanici_takim): ?>
         <div class="container py-5 text-center" style="max-width: 1200px;">
