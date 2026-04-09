@@ -909,8 +909,10 @@ class MatchEngine {
     // Mevcut ilk_11=1 oyuncusu yoksa veya 11'den azsa tamamlar.
     // =========================================================================
     public function auto_ilk_11(int $takim_id): array {
+        // Whitelist-validated prefix: only allow known safe values to prevent SQL injection
         $allowed_prefixes = ['', 'pl_', 'es_', 'de_', 'it_', 'fr_', 'pt_', 'cl_', 'uel_', 'uecl_'];
         $safe_prefix = in_array($this->prefix, $allowed_prefixes, true) ? $this->prefix : '';
+        // Table names are constructed only from the validated $safe_prefix + hardcoded suffix
         $tbl_oyuncular = $safe_prefix . 'oyuncular';
         $tbl_takimlar  = $safe_prefix . 'takimlar';
 
@@ -1025,8 +1027,10 @@ class MatchEngine {
     // Takım adına göre gerçek dünya taktiklerini de önerir.
     // =========================================================================
     public function taktik_bilgisi(int $takim_id): array {
+        // Whitelist-validated prefix: only allow known safe values to prevent SQL injection
         $allowed_prefixes = ['', 'pl_', 'es_', 'de_', 'it_', 'fr_', 'pt_', 'cl_', 'uel_', 'uecl_'];
         $safe_prefix = in_array($this->prefix, $allowed_prefixes, true) ? $this->prefix : '';
+        // Table name is constructed only from the validated $safe_prefix + hardcoded suffix
         $tbl_takimlar = $safe_prefix . 'takimlar';
 
         $varsayilan = [
