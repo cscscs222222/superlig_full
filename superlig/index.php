@@ -204,12 +204,25 @@ unset($_SESSION['reset_success']);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
+        /* --- YÜKSEK KONTRAST / DARK MODE ZORUNLU OVERRIDE --- */
+        body, .text, p, h1, h2, h3, h4, h5, h6,
+        table, td, th, label, span, a, li, ul, ol, div {
+            color: #ffffff !important;
+        }
+        body, html, table, td, th {
+            background-color: transparent !important;
+        }
+        input, select, textarea {
+            color: #ffffff !important;
+            background-color: #1a1a1a !important;
+        }
+
         /* --- YENİ NESİL ARKA PLAN VE GENEL AYARLAR --- */
         body, html {
             margin: 0; padding: 0; min-height: 100vh;
             font-family: 'Poppins', sans-serif;
-            background-color: #050505;
-            color: #fff;
+            background-color: #050505 !important;
+            color: #fff !important;
             overflow-x: hidden;
         }
 

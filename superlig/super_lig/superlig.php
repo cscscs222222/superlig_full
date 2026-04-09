@@ -55,12 +55,59 @@ if(isset($_GET['action'])) {
         $pdo->exec("UPDATE ayar SET kullanici_takim_id = $tid WHERE id=1");
         header("Location: superlig.php"); exit;
     }
+
+    // BU SEZONU SIFIRLA
+    if($action == 'bu_sezon_sifirla') {
+        $pdo->exec("TRUNCATE TABLE maclar");
+        $pdo->exec("UPDATE takimlar SET puan=0, galibiyet=0, beraberlik=0, malubiyet=0, atilan_gol=0, yenilen_gol=0");
+        $pdo->exec("UPDATE oyuncular SET sezon_gol=0, sezon_asist=0, form=6, fitness=100, moral=80, ceza_hafta=0, sakatlik_hafta=0, mac_puani_ort=6.00");
+        $pdo->exec("UPDATE ayar SET hafta=1");
+        header("Location: superlig.php?sifirla=bu_sezon"); exit;
+    }
+
+    // TÜM SEZONLARI SIFIRLA
+    if($action == 'tum_sezon_sifirla') {
+        $pdo->exec("TRUNCATE TABLE maclar");
+        $pdo->exec("UPDATE takimlar SET puan=0, galibiyet=0, beraberlik=0, malubiyet=0, atilan_gol=0, yenilen_gol=0");
+        $pdo->exec("UPDATE oyuncular SET sezon_gol=0, sezon_asist=0, toplam_mac=0, toplam_gol=0, form=6, fitness=100, moral=80, ceza_hafta=0, sakatlik_hafta=0, mac_puani_ort=6.00");
+        try { $pdo->exec("UPDATE ayar SET hafta=1, sezon_yil=2025, gecen_sezon_sampiyon=NULL"); } catch(Throwable $e) { $pdo->exec("UPDATE ayar SET hafta=1, sezon_yil=2025"); }
+        try { $pdo->exec("TRUNCATE TABLE haberler"); } catch(Throwable $e) {}
+        header("Location: superlig.php?sifirla=tum_sezon"); exit;
+    }
     
     // SEZONU SİMÜLE ET
     if($action == 'sezonu_simule') {
+        // Fikstür yoksa otomatik oluştur
+        $mac_sayisi_kontrol = 0;
+        try { $mac_sayisi_kontrol = (int)$pdo->query("SELECT COUNT(*) FROM maclar WHERE sezon_yil = $sezon_yili")->fetchColumn(); } catch(Throwable $e) {}
+        if ($mac_sayisi_kontrol == 0) {
+            $takimlar_fix = $pdo->query("SELECT id FROM takimlar ORDER BY RAND()")->fetchAll(PDO::FETCH_COLUMN);
+            if(count($takimlar_fix) > 1) {
+                if(count($takimlar_fix) % 2 != 0) $takimlar_fix[] = 0;
+                $t_sayisi = count($takimlar_fix); $yari = $t_sayisi - 1; $m_sayisi = $t_sayisi / 2;
+                for($h=1; $h<=$yari; $h++) {
+                    for($i=0; $i<$m_sayisi; $i++) {
+                        $ev_t = $takimlar_fix[$i]; $dep_t = $takimlar_fix[$t_sayisi-1-$i];
+                        if($ev_t != 0 && $dep_t != 0) {
+                            if($i % 2 == 0) {
+                                $pdo->exec("INSERT INTO maclar (ev,dep,hafta,sezon_yil) VALUES ($ev_t,$dep_t,$h,$sezon_yili)");
+                                $pdo->exec("INSERT INTO maclar (ev,dep,hafta,sezon_yil) VALUES ($dep_t,$ev_t,".($h+$yari).",$sezon_yili)");
+                            } else {
+                                $pdo->exec("INSERT INTO maclar (ev,dep,hafta,sezon_yil) VALUES ($dep_t,$ev_t,$h,$sezon_yili)");
+                                $pdo->exec("INSERT INTO maclar (ev,dep,hafta,sezon_yil) VALUES ($ev_t,$dep_t,".($h+$yari).",$sezon_yili)");
+                            }
+                        }
+                    }
+                    $son = array_pop($takimlar_fix); array_splice($takimlar_fix, 1, 0, [$son]);
+                }
+            }
+        }
         for($h = $hafta; $h <= $max_hafta; $h++) {
             $maclar_h = $pdo->query("SELECT m.id, m.ev, m.dep FROM maclar m WHERE m.hafta = $h AND m.ev_skor IS NULL")->fetchAll(PDO::FETCH_ASSOC);
             foreach($maclar_h as $m) {
+                // Auto-select Starting XI before simulation
+                $engine->auto_ilk_11((int)$m['ev']);
+                $engine->auto_ilk_11((int)$m['dep']);
                 $skorlar = $engine->gercekci_skor_hesapla($m['ev'], $m['dep'], $m);
                 $ev_skor = $skorlar['ev']; $dep_skor = $skorlar['dep'];
                 $ev_detay = $engine->mac_olay_uret($m['ev'], $ev_skor);
@@ -85,6 +132,9 @@ if(isset($_GET['action'])) {
         
         $m = $pdo->query("SELECT m.id, m.ev, m.dep FROM maclar m WHERE m.id = $mac_id AND m.ev_skor IS NULL")->fetch(PDO::FETCH_ASSOC);
         if($m) {
+            // Auto-select Starting XI before simulation
+            $engine->auto_ilk_11((int)$m['ev']);
+            $engine->auto_ilk_11((int)$m['dep']);
             $skorlar = $engine->gercekci_skor_hesapla($m['ev'], $m['dep'], $m);
             $ev_skor = $skorlar['ev']; $dep_skor = $skorlar['dep'];
             $ev_detay = $engine->mac_olay_uret($m['ev'], $ev_skor);
@@ -114,6 +164,9 @@ if(isset($_GET['action'])) {
         foreach($maclar as $m) {
             if($kullanici_takim && ($m['ev'] == $kullanici_takim || $m['dep'] == $kullanici_takim)) continue; 
             
+            // Auto-select Starting XI before simulation
+            $engine->auto_ilk_11((int)$m['ev']);
+            $engine->auto_ilk_11((int)$m['dep']);
             $skorlar = $engine->gercekci_skor_hesapla($m['ev'], $m['dep'], $m);
             $ev_skor = $skorlar['ev']; $dep_skor = $skorlar['dep'];
             $ev_detay = $engine->mac_olay_uret($m['ev'], $ev_skor);
@@ -189,7 +242,11 @@ try {
             --border-color: rgba(255,255,255,0.1);
         }
 
-        body { background-color: var(--bg-body); color: #f8fafc; font-family: 'Inter', sans-serif; }
+        /* --- YÜKSEK KONTRAST / DARK MODE OVERRIDE --- */
+        body, p, h1, h2, h3, h4, h5, h6, span, label, li { color: #f8fafc !important; }
+        td, th { color: #f8fafc !important; }
+
+        body { background-color: var(--bg-body) !important; color: #f8fafc !important; font-family: 'Inter', sans-serif; }
         .font-oswald { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
 
         .pro-navbar { background: rgba(15,23,42,0.95); border-bottom: 2px solid var(--sl-secondary); padding: 0 2rem; height: 75px; display: flex; justify-content: space-between; align-items: center; position: sticky; top:0; z-index:1000;}
@@ -209,11 +266,11 @@ try {
         .panel-header { padding: 1.2rem; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.2); font-weight: 700; display: flex; align-items: center; justify-content: space-between;}
 
         .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.9rem; }
-        .data-table th { padding: 1rem; color: #94a3b8; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; border-bottom: 1px solid var(--border-color); text-align: center;}
+        .data-table th { padding: 1rem; color: #94a3b8 !important; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; border-bottom: 1px solid var(--border-color); text-align: center;}
         .data-table th:nth-child(2) { text-align: left; }
         .data-table td { padding: 0.8rem 1rem; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.03); vertical-align: middle; font-weight: 500;}
         .data-table tbody tr:hover td { background: rgba(255,255,255,0.05); }
-        .cell-club { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; font-weight: 700; text-align: left; }
+        .cell-club { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff !important; font-weight: 700; text-align: left; }
         .cell-club img { width: 28px; height: 28px; object-fit: contain; }
         
         .zone-cl td:first-child { border-left: 4px solid #3b82f6; }
@@ -228,20 +285,30 @@ try {
         .score-grid { display: flex; width: 100%; min-height: 60px; align-items: stretch; }
         .team-block { display: flex; align-items: center; gap: 10px; padding: 0 15px; flex: 1; min-width: 0; }
         .team-block.home { justify-content: flex-end; }
-        .team-name { font-weight: 600; font-size: 0.95rem; color: #f8fafc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .team-name { font-weight: 600; font-size: 0.95rem; color: #f8fafc !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .team-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
         .center-block { width: 80px; flex-shrink: 0; background: rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .match-score { font-family: 'Oswald'; font-size: 1.5rem; font-weight: 700; color: #fff; }
+        .match-score { font-family: 'Oswald'; font-size: 1.5rem; font-weight: 700; color: #fff !important; }
         
         .match-actions { display: flex; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05); }
-        .action-btn { flex: 1; padding: 8px; text-align: center; text-decoration: none; color: var(--sl-accent); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
-        .action-btn:hover { background: var(--sl-accent); color: #000; }
+        .action-btn { flex: 1; padding: 8px; text-align: center; text-decoration: none; color: var(--sl-accent) !important; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
+        .action-btn:hover { background: var(--sl-accent); color: #000 !important; }
 
         .team-card { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; text-align: center; transition: 0.3s;}
         .team-card:hover { transform: translateY(-5px); border-color: var(--sl-secondary);}
         
         @keyframes blink { 50% { opacity: 0.5; box-shadow: 0 0 15px #ef4444; } }
         .blink-effect { animation: blink 1.5s infinite; }
+
+        /* Reset button styles */
+        .btn-reset-sezon { background: rgba(120,60,0,0.35); border: 1px solid rgba(251,191,36,0.5); color: #fde047 !important; font-weight: 700; padding: 7px 14px; border-radius: 5px; font-size: 0.78rem; text-decoration: none; transition: 0.2s; }
+        .btn-reset-sezon:hover { background: rgba(202,138,4,0.5); border-color: #ca8a04; }
+        .btn-reset-tum { background: rgba(127,29,29,0.35); border: 1px solid rgba(220,38,38,0.5); color: #fca5a5 !important; font-weight: 700; padding: 7px 14px; border-radius: 5px; font-size: 0.78rem; text-decoration: none; transition: 0.2s; }
+        .btn-reset-tum:hover { background: rgba(185,28,28,0.5); border-color: #b91c1c; }
+        /* Reset success/info alert */
+        .reset-alert { padding: 10px 16px; border-radius: 8px; margin: 0 0 12px; font-size: 0.85rem; font-weight: 600; }
+        .reset-alert.success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #6ee7b7 !important; }
+        .reset-alert.warning { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.4); color: #fde047 !important; }
 
     </style>
 </head>
@@ -274,9 +341,22 @@ try {
                 <?php if(!$sezon_tamam): ?>
                 <a href="?action=sezonu_simule" class="btn-action-outline" style="background:#7f1d1d;border-color:#dc2626;color:#fca5a5;" onclick="return confirm('Süper Lig sezonu simüle edilecek. Devam?')"><i class="fa-solid fa-forward-step"></i> Sezonu Simüle Et</a>
                 <?php endif; ?>
+                <!-- Season Reset Buttons -->
+                <a href="?action=bu_sezon_sifirla" class="btn-reset-sezon" onclick="return confirm('Bu sezonu sıfırla?\n\nMevcut fikstür, puan tablosu ve maç sonuçları silinecek. Geçmiş sezon şampiyonları korunacak.')"><i class="fa-solid fa-broom me-1"></i>Bu Sezonu Sıfırla</a>
+                <a href="?action=tum_sezon_sifirla" class="btn-reset-tum" onclick="return confirm('⚠️ TÜM SEZONLARI SIFIRLA!\n\nSÜPER LİG TÜM GEÇMİŞİ ve ŞAMPİYON KAYITLARI silinecek.\n\nBu işlem geri alınamaz! Emin misiniz?')"><i class="fa-solid fa-fire me-1"></i>Tüm Sezonları Sıfırla</a>
             <?php endif; ?>
         </div>
     </nav>
+
+    <?php if(isset($_GET['sifirla'])): ?>
+    <div class="container-fluid px-4 pt-3">
+        <?php if($_GET['sifirla'] === 'bu_sezon'): ?>
+        <div class="reset-alert success"><i class="fa-solid fa-check-circle me-2"></i>✅ Bu sezon başarıyla sıfırlandı. Fikstür, puan tablosu ve maç sonuçları temizlendi. Geçmiş sezon şampiyonları korundu.</div>
+        <?php elseif($_GET['sifirla'] === 'tum_sezon'): ?>
+        <div class="reset-alert warning"><i class="fa-solid fa-rotate-left me-2"></i>🔄 Tüm sezonlar sıfırlandı. Süper Lig geçmişi ve tüm veriler fabrika ayarlarına döndürüldü.</div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
     <?php if($sezon_tamam && $sampiyon_takim): ?>
     <div class="container-fluid py-3 px-4">
@@ -399,7 +479,17 @@ try {
                         </div>
                         
                         <div class="fixture-wrapper">
-                            <?php foreach($yayinlanacak_maclar as $mac): ?>
+                            <?php 
+                            // Pre-match team analysis for upcoming matches (first upcoming match only)
+                            $prv_shown = false;
+                            foreach($yayinlanacak_maclar as $mac): 
+                                if (!$prv_shown): 
+                                    $prv_shown = true;
+                                    echo $engine->mac_on_izleme_html((int)$mac['ev'], (int)$mac['dep']);
+                                    break;
+                                endif;
+                            endforeach;
+                            foreach($yayinlanacak_maclar as $mac): ?>
                                 <div class="scorebug-container">
                                     <div class="score-grid">
                                         <div class="team-block home"><span class="team-name"><?= $mac['ev_ad'] ?></span> <img src="<?= $mac['ev_logo'] ?>" class="team-logo"></div>

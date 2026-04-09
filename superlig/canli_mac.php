@@ -81,6 +81,10 @@ if($mac['ev_skor'] === NULL) {
             $hava = $engine->hava_ata($mac_id);
             $mac['hava_durumu'] = $hava;
 
+            // Auto-select Starting XI before simulation
+            $engine->auto_ilk_11((int)$mac['ev']);
+            $engine->auto_ilk_11((int)$mac['dep']);
+
             $skorlar = $engine->gercekci_skor_hesapla($mac['ev'], $mac['dep'], $mac);
             $ev_skor = $skorlar['ev']; $dep_skor = $skorlar['dep'];
 
@@ -273,7 +277,9 @@ elseif ($hava_durumu === 'Karlı') { $hava_icon = '❄️'; $hava_renk = '#e0f2f
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        body { margin: 0; padding: 0; background-color: #000; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden;}
+        /* --- YÜKSEK KONTRAST / DARK MODE OVERRIDE --- */
+        body, p, h1, h2, h3, h4, h5, h6, span, label, li, div { color: #ffffff; }
+        body { margin: 0; padding: 0; background-color: #000 !important; color: #fff !important; font-family: 'Inter', sans-serif; overflow: hidden;}
         .font-oswald { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
 
         /* Tam Ekran Sinematik Stadyum */
@@ -543,6 +549,51 @@ elseif ($hava_durumu === 'Karlı') { $hava_icon = '❄️'; $hava_renk = '#e0f2f
 
     <!-- Yorum Bandı -->
     <div class="bottom-ticker" id="commentary_container"></div>
+
+    <!-- PRE-MATCH LINEUP PANEL (gösterilip otomatik kapanır) -->
+    <?php
+    $ev_taktik  = $engine->taktik_bilgisi((int)$mac['ev']);
+    $dep_taktik = $engine->taktik_bilgisi((int)$mac['dep']);
+    // Get player lists for both teams (using already-resolved $tbl_oyuncular)
+    try {
+        $ev_11_stmt = $pdo->prepare("SELECT isim, mevki, ovr FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1 ORDER BY CASE mevki WHEN 'K' THEN 1 WHEN 'D' THEN 2 WHEN 'OS' THEN 3 WHEN 'F' THEN 4 END, ovr DESC");
+        $ev_11_stmt->execute([$mac['ev']]);
+        $ev_11_list = $ev_11_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch(Throwable $e) { $ev_11_list = []; }
+    try {
+        $dep_11_stmt = $pdo->prepare("SELECT isim, mevki, ovr FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1 ORDER BY CASE mevki WHEN 'K' THEN 1 WHEN 'D' THEN 2 WHEN 'OS' THEN 3 WHEN 'F' THEN 4 END, ovr DESC");
+        $dep_11_stmt->execute([$mac['dep']]);
+        $dep_11_list = $dep_11_stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch(Throwable $e) { $dep_11_list = []; }
+    ?>
+    <div id="prematch_panel" style="position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.88);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);">
+        <div style="max-width:700px;width:90%;max-height:90vh;overflow-y:auto;background:rgba(15,23,42,0.96);border:1px solid rgba(212,175,55,0.5);border-radius:14px;padding:24px;">
+            <div style="text-align:center;font-family:'Oswald',sans-serif;font-size:1.1rem;font-weight:700;color:#d4af37;letter-spacing:1px;margin-bottom:16px;">⚽ MAÇ ÖNCESİ ANALİZ — BAŞLANGIÇ 11'LERİ</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <?php foreach([
+                    ['takim_ad' => htmlspecialchars($mac['ev_ad']), 'oyuncular' => $ev_11_list, 'taktik' => $ev_taktik, 'etiket' => '🏠 EV SAHİBİ'],
+                    ['takim_ad' => htmlspecialchars($mac['dep_ad']), 'oyuncular' => $dep_11_list, 'taktik' => $dep_taktik, 'etiket' => '✈️ DEPLASMAN'],
+                ] as $grup): ?>
+                <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px;">
+                    <div style="color:#ffffff;font-weight:700;font-size:0.88rem;margin-bottom:6px;"><?= $grup['etiket'] ?>: <?= $grup['takim_ad'] ?></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+                        <span style="background:rgba(37,99,235,0.3);border:1px solid #2563eb;border-radius:4px;padding:1px 6px;color:#93c5fd;font-size:0.7rem;">📐 <?= htmlspecialchars($grup['taktik']['dizilis'] ?: '4-3-3') ?></span>
+                        <span style="background:rgba(16,185,129,0.2);border:1px solid #10b981;border-radius:4px;padding:1px 6px;color:#6ee7b7;font-size:0.7rem;">🎯 <?= htmlspecialchars($grup['taktik']['oyun_tarzi'] ?: 'Dengeli') ?></span>
+                        <?php if(!empty($grup['taktik']['pres'])): ?><span style="background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:4px;padding:1px 6px;color:#fca5a5;font-size:0.7rem;">💪 <?= htmlspecialchars($grup['taktik']['pres']) ?></span><?php endif; ?>
+                    </div>
+                    <?php $mev_ikon = ['K'=>'🧤','D'=>'🛡️','OS'=>'⚙️','F'=>'⚡']; $by_m = []; foreach($grup['oyuncular'] as $o) $by_m[$o['mevki']][] = $o; foreach(['K','D','OS','F'] as $mv): if(empty($by_m[$mv])) continue; ?>
+                    <div style="font-size:0.7rem;color:#94a3b8;margin-bottom:3px;"><?= $mev_ikon[$mv] ?? '' ?> <?php foreach($by_m[$mv] as $i=>$o): ?><span style="color:#e2e8f0;"><?= htmlspecialchars($o['isim']) ?></span><?= ($i < count($by_m[$mv])-1) ? '<span style="color:#4b5563;">, </span>' : '' ?><?php endforeach; ?></div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <div style="text-align:center;margin-top:16px;">
+                <button onclick="document.getElementById('prematch_panel').style.display='none'" style="background:#e11d48;color:#fff;border:none;padding:10px 32px;border-radius:8px;font-family:'Oswald',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;letter-spacing:1px;">
+                    🎬 MAÇA BAŞLA
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- FAZ 2: TAKTİK PANELİ (60. Dakika) -->
     <?php if($kullanici_takim_kim): ?>

@@ -901,5 +901,260 @@ class MatchEngine {
             $this->pdo->prepare("UPDATE $tbl_oyuncular SET kurtaris = 0 WHERE mevki = 'K'")->execute();
         } catch (Throwable $e) { /* Tablo yoksa sessizce geç */ }
     }
+
+    // =========================================================================
+    // GERÇEKÇİ BAŞLANGIÇ 11 OTO-SEÇİMİ
+    // =========================================================================
+    // Bir takım için dizilişe göre otomatik 11 oyuncu seçer.
+    // Mevcut ilk_11=1 oyuncusu yoksa veya 11'den azsa tamamlar.
+    // =========================================================================
+    public function auto_ilk_11(int $takim_id): array {
+        // Whitelist-validated prefix: only allow known safe values to prevent SQL injection
+        $allowed_prefixes = ['', 'pl_', 'es_', 'de_', 'it_', 'fr_', 'pt_', 'cl_', 'uel_', 'uecl_'];
+        $safe_prefix = in_array($this->prefix, $allowed_prefixes, true) ? $this->prefix : '';
+        // Table names are constructed only from the validated $safe_prefix + hardcoded suffix
+        $tbl_oyuncular = $safe_prefix . 'oyuncular';
+        $tbl_takimlar  = $safe_prefix . 'takimlar';
+
+        // Takımın dizilişini al
+        $dizilis = '4-3-3';
+        try {
+            $row = $this->pdo->prepare("SELECT dizilis FROM $tbl_takimlar WHERE id=? LIMIT 1");
+            $row->execute([$takim_id]);
+            $r = $row->fetchColumn();
+            if ($r) $dizilis = $r;
+        } catch (Throwable $e) {}
+
+        // Dizilişe göre mevki ihtiyaçları
+        $mevki_ihtiyaci = $this->dizilis_mevki_ihtiyaci($dizilis);
+
+        // Mevcut ilk_11 oyuncularını al
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT id, isim, mevki, ovr, fitness, form FROM $tbl_oyuncular
+                  WHERE takim_id=? AND ilk_11=1 AND sakatlik_hafta=0 AND ceza_hafta=0
+                  ORDER BY ovr DESC"
+            );
+            $stmt->execute([$takim_id]);
+            $mevcut_11 = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            $mevcut_11 = [];
+        }
+
+        // Yeterli ilk_11 seçilmişse olduğu gibi döndür
+        if (count($mevcut_11) >= 11) {
+            return array_slice($mevcut_11, 0, 11);
+        }
+
+        // Tüm sağlıklı oyuncuları al
+        try {
+            $stmt2 = $this->pdo->prepare(
+                "SELECT id, isim, mevki, ovr, fitness, form FROM $tbl_oyuncular
+                  WHERE takim_id=? AND sakatlik_hafta=0 AND ceza_hafta=0
+                  ORDER BY ovr DESC"
+            );
+            $stmt2->execute([$takim_id]);
+            $tumoyuncular = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+        } catch (Throwable $e) {
+            $tumoyuncular = [];
+        }
+
+        if (empty($tumoyuncular)) return [];
+
+        // Mevkiye göre grupla
+        $mevki_gruplari = [];
+        foreach ($tumoyuncular as $o) {
+            $mevki_gruplari[$o['mevki']][] = $o;
+        }
+
+        // Seçilen 11
+        $secilen = [];
+        $secilen_ids = [];
+
+        foreach ($mevki_ihtiyaci as $mevki => $adet) {
+            $uygunlar = $mevki_gruplari[$mevki] ?? [];
+            $eklenen = 0;
+            foreach ($uygunlar as $o) {
+                if ($eklenen >= $adet) break;
+                if (!in_array($o['id'], $secilen_ids)) {
+                    $secilen[] = $o;
+                    $secilen_ids[] = $o['id'];
+                    $eklenen++;
+                }
+            }
+        }
+
+        // 11'e tamamla (eksik mevki varsa en yüksek OVR'li kalan oyuncudan)
+        foreach ($tumoyuncular as $o) {
+            if (count($secilen) >= 11) break;
+            if (!in_array($o['id'], $secilen_ids)) {
+                $secilen[] = $o;
+                $secilen_ids[] = $o['id'];
+            }
+        }
+
+        // Veritabanına yaz (ilk_11 flag'ı güncelle)
+        try {
+            $this->pdo->prepare("UPDATE $tbl_oyuncular SET ilk_11=0, yedek=1 WHERE takim_id=?")->execute([$takim_id]);
+            if (!empty($secilen_ids)) {
+                $placeholders = implode(',', array_fill(0, count($secilen_ids), '?'));
+                $upd = $this->pdo->prepare("UPDATE $tbl_oyuncular SET ilk_11=1, yedek=0 WHERE takim_id=? AND id IN ($placeholders)");
+                $upd->execute(array_merge([$takim_id], $secilen_ids));
+            }
+        } catch (Throwable $e) {}
+
+        return array_slice($secilen, 0, 11);
+    }
+
+    // Dizilişe göre mevki ihtiyacı haritası (K=Kaleci, D=Defans, OS=Orta Saha, F=Forvet)
+    private function dizilis_mevki_ihtiyaci(string $dizilis): array {
+        $harita = [
+            '4-3-3'   => ['K' => 1, 'D' => 4, 'OS' => 3, 'F' => 3],
+            '4-4-2'   => ['K' => 1, 'D' => 4, 'OS' => 4, 'F' => 2],
+            '4-2-3-1' => ['K' => 1, 'D' => 4, 'OS' => 5, 'F' => 1],
+            '3-5-2'   => ['K' => 1, 'D' => 3, 'OS' => 5, 'F' => 2],
+            '5-3-2'   => ['K' => 1, 'D' => 5, 'OS' => 3, 'F' => 2],
+            '4-1-4-1' => ['K' => 1, 'D' => 4, 'OS' => 5, 'F' => 1],
+            '3-4-3'   => ['K' => 1, 'D' => 3, 'OS' => 4, 'F' => 3],
+        ];
+        return $harita[$dizilis] ?? ['K' => 1, 'D' => 4, 'OS' => 3, 'F' => 3];
+    }
+
+    // =========================================================================
+    // TAKTİK BİLGİSİ DÖNDÜR
+    // =========================================================================
+    // Takımın mevcut diziliş, oyun tarzı ve tempo bilgisini veritabanından alır.
+    // Takım adına göre gerçek dünya taktiklerini de önerir.
+    // =========================================================================
+    public function taktik_bilgisi(int $takim_id): array {
+        // Whitelist-validated prefix: only allow known safe values to prevent SQL injection
+        $allowed_prefixes = ['', 'pl_', 'es_', 'de_', 'it_', 'fr_', 'pt_', 'cl_', 'uel_', 'uecl_'];
+        $safe_prefix = in_array($this->prefix, $allowed_prefixes, true) ? $this->prefix : '';
+        // Table name is constructed only from the validated $safe_prefix + hardcoded suffix
+        $tbl_takimlar = $safe_prefix . 'takimlar';
+
+        $varsayilan = [
+            'takim_adi'  => '',
+            'dizilis'    => '4-3-3',
+            'oyun_tarzi' => 'Dengeli',
+            'pres'       => 'Normal',
+            'tempo'      => 'Normal',
+        ];
+
+        try {
+            $stmt = $this->pdo->prepare(
+                "SELECT takim_adi, dizilis, oyun_tarzi, pres, tempo FROM $tbl_takimlar WHERE id=? LIMIT 1"
+            );
+            $stmt->execute([$takim_id]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) {
+                $varsayilan = array_merge($varsayilan, $row);
+            }
+        } catch (Throwable $e) {}
+
+        // Takım adına göre gerçek dünya taktik önerileri (tanınmış takımlar)
+        $gercek_taktikler = [
+            'Galatasaray'        => ['dizilis' => '4-2-3-1', 'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Yüksek Pres'],
+            'Fenerbahçe'         => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Hücum',           'pres' => 'Normal'],
+            'Beşiktaş'           => ['dizilis' => '4-4-2',   'oyun_tarzi' => 'Kontratak',        'pres' => 'Normal'],
+            'Trabzonspor'        => ['dizilis' => '4-2-3-1', 'oyun_tarzi' => 'Dengeli',          'pres' => 'Normal'],
+            'Real Madrid'        => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Normal'],
+            'Barcelona'          => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Yüksek Pres'],
+            'Manchester City'    => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Yüksek Pres'],
+            'Manchester United'  => ['dizilis' => '4-2-3-1', 'oyun_tarzi' => 'Kontratak',        'pres' => 'Normal'],
+            'Liverpool'          => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Hücum',            'pres' => 'Yüksek Pres'],
+            'Arsenal'            => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Yüksek Pres'],
+            'Chelsea'            => ['dizilis' => '4-2-3-1', 'oyun_tarzi' => 'Dengeli',          'pres' => 'Normal'],
+            'Tottenham'          => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Hücum',            'pres' => 'Normal'],
+            'Bayern'             => ['dizilis' => '4-2-3-1', 'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Yüksek Pres'],
+            'Dortmund'           => ['dizilis' => '4-2-3-1', 'oyun_tarzi' => 'Hücum',            'pres' => 'Yüksek Pres'],
+            'PSG'                => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Hücum',            'pres' => 'Normal'],
+            'Paris'              => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Hücum',            'pres' => 'Normal'],
+            'Juventus'           => ['dizilis' => '3-5-2',   'oyun_tarzi' => 'Dengeli',          'pres' => 'Normal'],
+            'Inter'              => ['dizilis' => '3-5-2',   'oyun_tarzi' => 'Kontratak',        'pres' => 'Normal'],
+            'AC Milan'           => ['dizilis' => '4-2-3-1', 'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Normal'],
+            'Napoli'             => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Yüksek Pres'],
+            'Atletico'           => ['dizilis' => '4-4-2',   'oyun_tarzi' => 'Otobüs Çek',       'pres' => 'Düşük Pres'],
+            'Atlético'           => ['dizilis' => '4-4-2',   'oyun_tarzi' => 'Otobüs Çek',       'pres' => 'Düşük Pres'],
+            'Benfica'            => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Hücum',            'pres' => 'Normal'],
+            'Porto'              => ['dizilis' => '4-4-2',   'oyun_tarzi' => 'Kontratak',        'pres' => 'Normal'],
+            'Sporting'           => ['dizilis' => '4-3-3',   'oyun_tarzi' => 'Topa Sahip Olma', 'pres' => 'Yüksek Pres'],
+        ];
+
+        $takim_adi_kisa = $varsayilan['takim_adi'];
+        foreach ($gercek_taktikler as $anahtar => $taktik) {
+            if (mb_stripos($takim_adi_kisa, $anahtar) !== false) {
+                // Sadece kayıt yoksa veya varsayılan değerdeyse uygula
+                if (empty($varsayilan['dizilis']) || $varsayilan['dizilis'] === '4-3-3') {
+                    $varsayilan = array_merge($varsayilan, $taktik);
+                } elseif (empty($varsayilan['oyun_tarzi']) || $varsayilan['oyun_tarzi'] === 'Dengeli') {
+                    $varsayilan['oyun_tarzi'] = $taktik['oyun_tarzi'];
+                    $varsayilan['pres']       = $taktik['pres'];
+                }
+                break;
+            }
+        }
+
+        return $varsayilan;
+    }
+
+    // =========================================================================
+    // MAÇ ÖN İZLEME HTML BLOĞU
+    // =========================================================================
+    // Maç öncesi her iki takımın Starting XI, diziliş ve taktiklerini HTML olarak döndürür.
+    // =========================================================================
+    public function mac_on_izleme_html(int $ev_id, int $dep_id): string {
+        // Her iki takım için ilk 11 oto-seçimi
+        $ev_11  = $this->auto_ilk_11($ev_id);
+        $dep_11 = $this->auto_ilk_11($dep_id);
+
+        // Taktik bilgileri
+        $ev_taktik  = $this->taktik_bilgisi($ev_id);
+        $dep_taktik = $this->taktik_bilgisi($dep_id);
+
+        // Takım adları
+        $ev_ad  = htmlspecialchars($ev_taktik['takim_adi']  ?: 'Ev Sahibi');
+        $dep_ad = htmlspecialchars($dep_taktik['takim_adi'] ?: 'Deplasman');
+
+        $html  = '<div style="background:rgba(0,0,0,0.4);border:1px solid rgba(212,175,55,0.4);border-radius:10px;padding:16px;margin-bottom:16px;font-size:0.83rem;">';
+        $html .= '<div style="font-family:\'Oswald\',sans-serif;font-size:1rem;font-weight:700;color:#d4af37;text-align:center;margin-bottom:12px;letter-spacing:1px;">⚽ MAÇ ÖNCESİ TAKIM ANALİZİ</div>';
+
+        foreach ([
+            ['takim_adi' => $ev_ad,  'oyuncular' => $ev_11,  'taktik' => $ev_taktik,  'etiket' => '🏠 EV SAHİBİ'],
+            ['takim_adi' => $dep_ad, 'oyuncular' => $dep_11, 'taktik' => $dep_taktik, 'etiket' => '✈️ DEPLASMAN'],
+        ] as $grup) {
+            $html .= '<div style="margin-bottom:12px;">';
+            $html .= '<div style="color:#fff;font-weight:700;font-size:0.9rem;margin-bottom:4px;">'
+                   . $grup['etiket'] . ': ' . $grup['takim_adi'] . '</div>';
+
+            // Diziliş ve taktik özeti
+            $html .= '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">';
+            $html .= '<span style="background:rgba(37,99,235,0.3);border:1px solid #2563eb;border-radius:4px;padding:2px 8px;color:#93c5fd;font-size:0.75rem;">📐 ' . htmlspecialchars($grup['taktik']['dizilis'] ?: '4-3-3') . '</span>';
+            $html .= '<span style="background:rgba(16,185,129,0.2);border:1px solid #10b981;border-radius:4px;padding:2px 8px;color:#6ee7b7;font-size:0.75rem;">🎯 ' . htmlspecialchars($grup['taktik']['oyun_tarzi'] ?: 'Dengeli') . '</span>';
+            if (!empty($grup['taktik']['pres'])) {
+                $html .= '<span style="background:rgba(239,68,68,0.2);border:1px solid #ef4444;border-radius:4px;padding:2px 8px;color:#fca5a5;font-size:0.75rem;">💪 ' . htmlspecialchars($grup['taktik']['pres']) . '</span>';
+            }
+            $html .= '</div>';
+
+            // Oyuncu listesi (mevkiye göre gruplu)
+            if (!empty($grup['oyuncular'])) {
+                $mevki_isimleri = ['K' => '🧤', 'D' => '🛡️', 'OS' => '⚙️', 'F' => '⚡'];
+                $by_mevki = [];
+                foreach ($grup['oyuncular'] as $o) {
+                    $by_mevki[$o['mevki']][] = $o['isim'];
+                }
+                foreach (['K', 'D', 'OS', 'F'] as $m) {
+                    if (empty($by_mevki[$m])) continue;
+                    $ikon = $mevki_isimleri[$m] ?? '';
+                    $html .= '<div style="color:#94a3b8;font-size:0.75rem;margin-bottom:2px;">'
+                           . $ikon . ' <span style="color:#e2e8f0;">' . implode(', ', array_map('htmlspecialchars', $by_mevki[$m])) . '</span></div>';
+                }
+            }
+            $html .= '</div>';
+        }
+
+        $html .= '</div>';
+        return $html;
+    }
 }
 ?>
