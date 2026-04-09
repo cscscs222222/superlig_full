@@ -45,10 +45,13 @@ sutunEkle($pdo, 'fr_ayar', 'gecen_sezon_sampiyon', "VARCHAR(100) DEFAULT 'Paris 
 sutunEkle($pdo, 'fr_takimlar', 'lig', "VARCHAR(50) DEFAULT 'Ligue 1'");
 sutunEkle($pdo, 'fr_oyuncular', 'lig', "VARCHAR(50) DEFAULT 'Ligue 1'");
 
-// LIGUE 1 - 20 TAKIM
+// Ligue 1 destekleniyor
+error_log("Ligue 1 destekleniyor");
+
+// LIGUE 1 - 18 TAKIM (gerçek dünya formatı)
 $ligue1_takim_sayisi = 0;
 try { $ligue1_takim_sayisi = $pdo->query("SELECT COUNT(*) FROM fr_takimlar")->fetchColumn(); } catch(Throwable $e) {}
-if($ligue1_takim_sayisi < 20) {
+if($ligue1_takim_sayisi < 18) {
     $fransa_devleri = [
         ['Paris Saint-Germain', 'https://tmssl.akamaized.net/images/wappen/head/583.png',   96, 92],
         ['Olympique de Marseille','https://tmssl.akamaized.net/images/wappen/head/244.png', 84, 82],
@@ -68,8 +71,6 @@ if($ligue1_takim_sayisi < 20) {
         ['Le Havre AC',         'https://tmssl.akamaized.net/images/wappen/head/738.png',   72, 73],
         ['Clermont Foot',       'https://tmssl.akamaized.net/images/wappen/head/3524.png',  71, 72],
         ['Lorient',             'https://tmssl.akamaized.net/images/wappen/head/1158.png',  71, 72],
-        ['Metz',                'https://tmssl.akamaized.net/images/wappen/head/347.png',   70, 71],
-        ['FC Nantes (B)',        'https://tmssl.akamaized.net/images/wappen/head/995.png',   69, 70],
     ];
     foreach($fransa_devleri as $d) {
         $ad = $d[0]; $logo = $d[1]; $huc = $d[2]; $sav = $d[3];
@@ -129,9 +130,9 @@ $hafta = $ayar['hafta'] ?? 1;
 $sezon_yili = $ayar['sezon_yil'] ?? 2025;
 $kullanici_takim = $ayar['kullanici_takim_id'] ?? null;
 $gecen_sezon_sampiyon = $ayar['gecen_sezon_sampiyon'] ?? 'Paris Saint-Germain';
-$max_hafta = 38;
+$max_hafta = 34; // Ligue 1: 18 takım, çift devreli = 34 hafta
 
-// FİKSTÜR OLUŞTUR (20 takım, 38 hafta)
+// FİKSTÜR OLUŞTUR (18 takım, çift devreli = 34 hafta)
 $mac_sayisi = 0;
 try { $mac_sayisi = $pdo->query("SELECT COUNT(*) FROM fr_maclar WHERE sezon_yil = $sezon_yili")->fetchColumn(); } catch(Throwable $e) {}
 if($mac_sayisi == 0) {
@@ -222,8 +223,21 @@ $benim_macim_id = null;
 if($kullanici_takim) {
     try { $benim_macim_id = $pdo->query("SELECT id FROM fr_maclar WHERE hafta=$goster_hafta AND ev_skor IS NULL AND (ev=$kullanici_takim OR dep=$kullanici_takim)")->fetchColumn(); } catch(Throwable $e) {}
 }
+
+// Sezon tamamlandı mı? (tüm maçlar oynanmış ve son hafta)
+$sezon_tamam = false;
+$sampiyon_takim = null;
+try {
+    $kalan_toplam = $pdo->query("SELECT COUNT(*) FROM fr_maclar WHERE sezon_yil=$sezon_yili AND ev_skor IS NULL")->fetchColumn();
+    $toplam_mac = $pdo->query("SELECT COUNT(*) FROM fr_maclar WHERE sezon_yil=$sezon_yili")->fetchColumn();
+    if($toplam_mac > 0 && $kalan_toplam == 0 && $hafta >= $max_hafta) {
+        $sezon_tamam = true;
+        $sampiyon_takim = $puan_durumu[0] ?? null;
+    }
+} catch(Throwable $e) {}
 ?>
 <!DOCTYPE html>
+<!-- Ligue 1 destekleniyor -->
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -290,6 +304,14 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 .champion-banner i { font-size:2rem; color:var(--fr-gold); }
 .champion-banner .title { font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
 .champion-banner .name { font-size:1.2rem; font-weight:900; color:#fff; font-family:'Oswald',sans-serif; }
+.sampiyon-blok { background:linear-gradient(135deg,#003f8a,#ef4135); border:3px solid var(--fr-gold); border-radius:16px; padding:32px 24px; text-align:center; margin-bottom:28px; animation:champGlow 2s ease-in-out infinite alternate; }
+@keyframes champGlow { from { box-shadow:0 0 20px rgba(212,175,55,0.4); } to { box-shadow:0 0 50px rgba(212,175,55,0.8); } }
+.sampiyon-blok .blok-bar { font-family:monospace; font-size:0.85rem; color:var(--fr-gold); letter-spacing:0; }
+.sampiyon-blok .sampiyon-text { font-family:'Oswald',sans-serif; font-size:1.8rem; font-weight:900; color:#fff; margin:12px 0; text-shadow:0 2px 8px rgba(0,0,0,0.5); }
+.sampiyon-blok .php-snippet { background:rgba(0,0,0,0.5); border:1px solid rgba(212,175,55,0.3); border-radius:8px; padding:12px 16px; margin-top:16px; font-family:monospace; font-size:0.8rem; color:#a3e635; text-align:left; }
+.sampiyon-top4 { background:rgba(0,0,0,0.3); border-radius:8px; padding:12px 16px; margin-top:16px; }
+.sampiyon-top4 .top4-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1); color:#fff; font-size:0.9rem; }
+.sampiyon-top4 .top4-row:last-child { border-bottom:none; }
 </style>
 </head>
 <body>
@@ -322,6 +344,35 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 
 <div class="container-fluid py-4 px-4">
 
+    <?php if($sezon_tamam && $sampiyon_takim): ?>
+    <!-- ŞAMPİYON BLO -->
+    <div class="sampiyon-blok">
+        <div class="blok-bar">█████████████████████████████████</div>
+        <div class="sampiyon-text">🏆 LİGUE 1 ŞAMPİYONU: <?=htmlspecialchars($sampiyon_takim['takim_adi'])?> 🏆</div>
+        <div class="blok-bar">█████████████████████████████████</div>
+        <div class="sampiyon-top4 mt-3">
+            <div style="font-size:0.8rem;color:var(--fr-gold);font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Final Puan Tablosu — İlk 4</div>
+            <?php foreach(array_slice($puan_durumu,0,4) as $idx=>$st): ?>
+            <div class="top4-row">
+                <span style="font-family:'Oswald';font-weight:700;color:var(--fr-gold);width:24px;"><?=$idx+1?></span>
+                <img src="<?=htmlspecialchars($st['logo']??'')?>" style="width:22px;height:22px;object-fit:contain;" onerror="this.style.display='none'">
+                <span style="flex:1;font-weight:600;"><?=htmlspecialchars($st['takim_adi'])?></span>
+                <span style="font-family:'Oswald';font-weight:900;color:var(--fr-gold);"><?=$st['puan']?> P</span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+        <div class="php-snippet">
+            <div style="color:#94a3b8;margin-bottom:6px;">// index.php için son şampiyon güncellemesi</div>
+            <div>$son_sampiyon['ligue1'] = "<?=htmlspecialchars($sampiyon_takim['takim_adi'])?>";</div>
+        </div>
+        <div class="mt-3">
+            <a href="l1_sezon_gecisi.php" style="display:inline-block;background:var(--fr-gold);color:#000;font-family:'Oswald',sans-serif;font-weight:900;padding:12px 32px;border-radius:8px;text-decoration:none;text-transform:uppercase;">
+                <i class="fa-solid fa-forward-fast me-2"></i>Yeni Sezona Geç
+            </a>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <!-- GEÇEN SEZON ŞAMPİYONU -->
     <div class="champion-banner">
         <i class="fa-solid fa-crown"></i>
@@ -344,7 +395,7 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
                         <thead><tr><th>#</th><th>Takım</th><th>O</th><th>G</th><th>B</th><th>M</th><th>AG</th><th>P</th></tr></thead>
                         <tbody>
                         <?php foreach($puan_durumu as $i => $t): $s=$i+1;
-                            $cls = $s<=4?'zone-cl':($s<=6?'zone-el':($s>=18?'zone-rel':''));
+                            $cls = $s<=4?'zone-cl':($s<=6?'zone-el':($s>=16?'zone-rel':''));
                             $o=($t['galibiyet']+$t['beraberlik']+$t['malubiyet']);
                             $ag=$t['atilan_gol']-$t['yenilen_gol'];
                         ?>

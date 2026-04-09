@@ -106,6 +106,19 @@ body { background:#0d0d0d; color:#fff; font-family:'Inter',sans-serif; min-heigh
         <p>Ligue 1'de şampiyonluk yarışı tamamlandı. İşte final sıralaması:</p>
     </div>
 
+    <!-- ŞAMPİYON BLOĞU (ASCII STYLE) -->
+    <div style="background:linear-gradient(135deg,rgba(0,63,138,0.5),rgba(239,65,53,0.3));border:3px solid #d4af37;border-radius:16px;padding:28px 24px;text-align:center;margin-bottom:32px;box-shadow:0 0 40px rgba(212,175,55,0.4);">
+        <div style="font-family:monospace;color:#d4af37;font-size:0.85rem;letter-spacing:0;">█████████████████████████████████</div>
+        <div style="font-family:'Oswald',sans-serif;font-size:2rem;font-weight:900;color:#fff;margin:14px 0;text-shadow:0 2px 8px rgba(0,0,0,0.5);">
+            🏆 LİGUE 1 ŞAMPİYONU: <?=htmlspecialchars($sampiyon['takim_adi']??'Bilinmiyor')?> 🏆
+        </div>
+        <div style="font-family:monospace;color:#d4af37;font-size:0.85rem;">█████████████████████████████████</div>
+        <div style="margin-top:12px;background:rgba(0,0,0,0.4);border:1px solid rgba(212,175,55,0.3);border-radius:8px;padding:10px 16px;font-family:monospace;font-size:0.78rem;color:#a3e635;text-align:left;">
+            <div style="color:#94a3b8;margin-bottom:4px;">// index.php için son şampiyon güncellemesi</div>
+            $son_sampiyon['ligue1'] = "<?=htmlspecialchars($sampiyon['takim_adi']??'')?>";
+        </div>
+    </div>
+
     <div class="champion-card">
         <img src="<?=htmlspecialchars($sampiyon['logo']??'')?>" onerror="this.style.display='none'">
         <div class="label">🏆 <?=$guncel_sezon?> Ligue 1 Şampiyonu</div>

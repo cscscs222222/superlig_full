@@ -103,7 +103,7 @@ body { background:var(--bg); color:#fff; font-family:'Inter',sans-serif; min-hei
                         <thead><tr><th>#</th><th>Takım</th><th>O</th><th>G</th><th>B</th><th>M</th><th>AG</th><th>YG</th><th>AV</th><th>P</th></tr></thead>
                         <tbody>
                         <?php foreach($puan_durumu as $i => $t): $s=$i+1;
-                            $cls = $s<=4?'zone-cl':($s<=6?'zone-el':($s>=18?'zone-rel':''));
+                            $cls = $s<=4?'zone-cl':($s<=6?'zone-el':($s>=16?'zone-rel':''));
                             $o=($t['galibiyet']+$t['beraberlik']+$t['malubiyet']);
                             $av=$t['atilan_gol']-$t['yenilen_gol'];
                         ?>
@@ -122,7 +122,7 @@ body { background:var(--bg); color:#fff; font-family:'Inter',sans-serif; min-hei
                 <div style="padding:12px 16px;font-size:0.75rem;color:#94a3b8;border-top:1px solid var(--border);display:flex;gap:16px;">
                     <span style="border-left:3px solid var(--fr-primary);padding-left:6px;">1-4: Şampiyonlar Ligi</span>
                     <span style="border-left:3px solid var(--fr-secondary);padding-left:6px;">5-6: Avrupa Ligi</span>
-                    <span style="border-left:3px solid #6b7280;padding-left:6px;">18-20: Küme Düşme</span>
+                    <span style="border-left:3px solid #6b7280;padding-left:6px;">16-18: Küme Düşme</span>
                 </div>
             </div>
         </div>

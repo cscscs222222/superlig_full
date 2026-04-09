@@ -112,19 +112,98 @@ function simulate_league_week(
 }
 
 // ================================================================
+// YARDIMCI FONKSİYON: Puan tablosu özeti (Top 8 + Bottom 3)
+// ================================================================
+function get_puan_tablosu_ozet($pdo, $takimlar_tbl, $toplam_takim = 0): string {
+    static $allowed_tables = [
+        'takimlar', 'pl_takimlar', 'es_takimlar', 'de_takimlar',
+        'it_takimlar', 'fr_takimlar', 'pt_takimlar',
+        'cl_takimlar', 'uel_takimlar', 'uecl_takimlar',
+    ];
+    if (!in_array($takimlar_tbl, $allowed_tables, true)) return '';
+    try {
+        $rows = $pdo->query(
+            "SELECT takim_adi, puan, atilan_gol, yenilen_gol FROM $takimlar_tbl
+              ORDER BY puan DESC, (atilan_gol-yenilen_gol) DESC, atilan_gol DESC"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) { return ''; }
+    if (empty($rows)) return '';
+    $total = count($rows);
+    $top8 = array_slice($rows, 0, 8);
+    $bottom3 = $total > 8 ? array_slice($rows, -3) : [];
+    $out = '<div style="font-size:0.78rem;margin-top:6px;background:rgba(255,255,255,0.05);border-radius:6px;padding:8px 10px;">';
+    $out .= '<div style="color:#d4af37;font-weight:700;font-size:0.72rem;text-transform:uppercase;margin-bottom:4px;">Puan Tablosu (İlk 8)</div>';
+    foreach ($top8 as $i => $t) {
+        $av = (int)$t['atilan_gol'] - (int)$t['yenilen_gol'];
+        $avStr = ($av > 0 ? '+' : '') . $av;
+        $out .= '<div style="display:flex;gap:8px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
+             . '<span style="width:20px;color:#94a3b8;">' . ($i+1) . '</span>'
+             . '<span style="flex:1;">' . htmlspecialchars($t['takim_adi']) . '</span>'
+             . '<span style="color:#d4af37;font-weight:700;">' . $t['puan'] . 'P</span>'
+             . '<span style="color:#94a3b8;font-size:0.7rem;margin-left:6px;">AV:' . $avStr . '</span>'
+             . '</div>';
+    }
+    if (!empty($bottom3)) {
+        $out .= '<div style="color:#6b7280;font-weight:700;font-size:0.72rem;text-transform:uppercase;margin:6px 0 4px;">— Son 3 —</div>';
+        $startIdx = $total - count($bottom3);
+        foreach ($bottom3 as $i => $t) {
+            $av = (int)$t['atilan_gol'] - (int)$t['yenilen_gol'];
+            $avStr = ($av > 0 ? '+' : '') . $av;
+            $out .= '<div style="display:flex;gap:8px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.05);opacity:0.75;">'
+                 . '<span style="width:20px;color:#94a3b8;">' . ($startIdx + $i + 1) . '</span>'
+                 . '<span style="flex:1;">' . htmlspecialchars($t['takim_adi']) . '</span>'
+                 . '<span style="color:#d4af37;font-weight:700;">' . $t['puan'] . 'P</span>'
+                 . '<span style="color:#94a3b8;font-size:0.7rem;margin-left:6px;">AV:' . $avStr . '</span>'
+                 . '</div>';
+        }
+    }
+    $out .= '</div>';
+    return $out;
+}
+
+// ================================================================
+// YARDIMCI FONKSİYON: Şampiyon UI bloğu oluştur
+// ================================================================
+function sampiyon_blok_olustur(string $lig_adi, string $takim_adi, string $lig_kod, array $top4): string {
+    $blok = '<div style="background:linear-gradient(135deg,#1e3a5f,#7f1d1d);border:2px solid #d4af37;border-radius:12px;padding:20px 24px;margin:12px 0;">';
+    $blok .= '<div style="font-family:monospace;color:#d4af37;font-size:0.8rem;">█████████████████████████████████</div>';
+    $blok .= '<div style="font-family:\'Oswald\',sans-serif;font-size:1.4rem;font-weight:900;color:#fff;margin:10px 0;">'
+           . '🏆 ' . htmlspecialchars($lig_adi) . ' ŞAMPİYONU: ' . htmlspecialchars($takim_adi) . ' 🏆</div>';
+    $blok .= '<div style="font-family:monospace;color:#d4af37;font-size:0.8rem;">█████████████████████████████████</div>';
+    if (!empty($top4)) {
+        $blok .= '<div style="margin-top:12px;font-size:0.8rem;">';
+        $blok .= '<div style="color:#d4af37;font-weight:700;margin-bottom:6px;text-transform:uppercase;font-size:0.72rem;">Final Tablosu — İlk 4</div>';
+        foreach ($top4 as $i => $t) {
+            $blok .= '<div style="display:flex;gap:8px;padding:3px 0;color:#fff;">'
+                   . '<span style="width:20px;color:#d4af37;font-weight:700;">' . ($i+1) . '</span>'
+                   . '<span style="flex:1;">' . htmlspecialchars($t['takim_adi']) . '</span>'
+                   . '<span style="color:#d4af37;font-weight:900;">' . $t['puan'] . 'P</span>'
+                   . '</div>';
+        }
+        $blok .= '</div>';
+    }
+    $blok .= '<div style="background:rgba(0,0,0,0.4);border:1px solid rgba(212,175,55,0.3);border-radius:6px;padding:10px 14px;margin-top:12px;font-family:monospace;font-size:0.78rem;color:#a3e635;">';
+    $blok .= '<div style="color:#94a3b8;margin-bottom:4px;">// index.php için son şampiyon güncellemesi</div>';
+    $blok .= '$son_sampiyon[\'' . htmlspecialchars($lig_kod) . '\'] = "' . htmlspecialchars($takim_adi) . '";';
+    $blok .= '</div>';
+    $blok .= '</div>';
+    return $blok;
+}
+
+// ================================================================
 // LİG / TURNUVA TANIMI
 // ================================================================
 $ligler = [
-    ['prefix' => '',     'maclar' => 'maclar',     'takimlar' => 'takimlar',     'ayar' => 'ayar',     'max' => 38, 'ad' => 'Süper Lig'],
-    ['prefix' => 'pl_',  'maclar' => 'pl_maclar',  'takimlar' => 'pl_takimlar',  'ayar' => 'pl_ayar',  'max' => 38, 'ad' => 'Premier League'],
-    ['prefix' => 'es_',  'maclar' => 'es_maclar',  'takimlar' => 'es_takimlar',  'ayar' => 'es_ayar',  'max' => 38, 'ad' => 'La Liga'],
-    ['prefix' => 'de_',  'maclar' => 'de_maclar',  'takimlar' => 'de_takimlar',  'ayar' => 'de_ayar',  'max' => 34, 'ad' => 'Bundesliga'],
-    ['prefix' => 'it_',  'maclar' => 'it_maclar',  'takimlar' => 'it_takimlar',  'ayar' => 'it_ayar',  'max' => 38, 'ad' => 'Serie A'],
-    ['prefix' => 'fr_',  'maclar' => 'fr_maclar',  'takimlar' => 'fr_takimlar',  'ayar' => 'fr_ayar',  'max' => 38, 'ad' => 'Ligue 1'],
-    ['prefix' => 'pt_',  'maclar' => 'pt_maclar',  'takimlar' => 'pt_takimlar',  'ayar' => 'pt_ayar',  'max' => 34, 'ad' => 'Liga NOS'],
-    ['prefix' => 'cl_',  'maclar' => 'cl_maclar',  'takimlar' => 'cl_takimlar',  'ayar' => 'cl_ayar',  'max' => 17, 'ad' => 'Champions League'],
-    ['prefix' => 'uel_', 'maclar' => 'uel_maclar', 'takimlar' => 'uel_takimlar', 'ayar' => 'uel_ayar', 'max' => 15, 'ad' => 'Europa League'],
-    ['prefix' => 'uecl_','maclar' => 'uecl_maclar','takimlar' => 'uecl_takimlar','ayar' => 'uecl_ayar','max' => 15, 'ad' => 'Conference League'],
+    ['prefix' => '',     'maclar' => 'maclar',     'takimlar' => 'takimlar',     'ayar' => 'ayar',     'max' => 38, 'ad' => 'Süper Lig',       'kod' => 'superlig'],
+    ['prefix' => 'pl_',  'maclar' => 'pl_maclar',  'takimlar' => 'pl_takimlar',  'ayar' => 'pl_ayar',  'max' => 38, 'ad' => 'Premier League',   'kod' => 'premier_league'],
+    ['prefix' => 'es_',  'maclar' => 'es_maclar',  'takimlar' => 'es_takimlar',  'ayar' => 'es_ayar',  'max' => 38, 'ad' => 'La Liga',           'kod' => 'la_liga'],
+    ['prefix' => 'de_',  'maclar' => 'de_maclar',  'takimlar' => 'de_takimlar',  'ayar' => 'de_ayar',  'max' => 34, 'ad' => 'Bundesliga',        'kod' => 'bundesliga'],
+    ['prefix' => 'it_',  'maclar' => 'it_maclar',  'takimlar' => 'it_takimlar',  'ayar' => 'it_ayar',  'max' => 38, 'ad' => 'Serie A',           'kod' => 'serie_a'],
+    ['prefix' => 'fr_',  'maclar' => 'fr_maclar',  'takimlar' => 'fr_takimlar',  'ayar' => 'fr_ayar',  'max' => 34, 'ad' => 'Ligue 1',           'kod' => 'ligue1'],
+    ['prefix' => 'pt_',  'maclar' => 'pt_maclar',  'takimlar' => 'pt_takimlar',  'ayar' => 'pt_ayar',  'max' => 34, 'ad' => 'Liga NOS',          'kod' => 'liga_nos'],
+    ['prefix' => 'cl_',  'maclar' => 'cl_maclar',  'takimlar' => 'cl_takimlar',  'ayar' => 'cl_ayar',  'max' => 17, 'ad' => 'Champions League',  'kod' => 'champions_league'],
+    ['prefix' => 'uel_', 'maclar' => 'uel_maclar', 'takimlar' => 'uel_takimlar', 'ayar' => 'uel_ayar', 'max' => 15, 'ad' => 'Europa League',     'kod' => 'europa_league'],
+    ['prefix' => 'uecl_','maclar' => 'uecl_maclar','takimlar' => 'uecl_takimlar','ayar' => 'uecl_ayar','max' => 15, 'ad' => 'Conference League', 'kod' => 'conference_league'],
 ];
 
 // Kullanıcı takımı (Süper Lig ayarından)
@@ -140,6 +219,10 @@ $sonuc_mesajlari = [];
 
 if (isset($_POST['global_hafta_oyna'])) {
     foreach ($ligler as $lig) {
+        // Ligue 1 destek mesajı
+        if ($lig['ad'] === 'Ligue 1') {
+            error_log("Ligue 1 destekleniyor");
+        }
         try {
             $hafta = (int)$pdo->query("SELECT hafta FROM {$lig['ayar']} LIMIT 1")->fetchColumn();
         } catch (Throwable $e) { continue; }
@@ -151,8 +234,31 @@ if (isset($_POST['global_hafta_oyna'])) {
             $hafta, $lig['max'], $kullanici_takim_id
         );
         if ($simulated > 0) {
-            $sonuc_mesajlari[] = "<strong>{$lig['ad']}</strong>: {$simulated} maç oynandı (Hafta {$hafta})";
+            $msg = "<strong>{$lig['ad']}</strong> — Hafta {$hafta}: {$simulated} maç oynandı";
+            // Puan tablosu özeti ekle (Top 8 + Bottom 3)
+            $msg .= get_puan_tablosu_ozet($pdo, $lig['takimlar']);
+            $sonuc_mesajlari[] = $msg;
         }
+
+        // Sezon tamamlandı mı? Şampiyon belirle
+        try {
+            $kalan_tum = $pdo->prepare("SELECT COUNT(*) FROM {$lig['maclar']} WHERE ev_skor IS NULL");
+            $kalan_tum->execute();
+            $kalan_tum_sayisi = (int)$kalan_tum->fetchColumn();
+            $yeni_hafta = (int)$pdo->query("SELECT hafta FROM {$lig['ayar']} LIMIT 1")->fetchColumn();
+            if ($kalan_tum_sayisi == 0 && $yeni_hafta >= $lig['max']) {
+                // Şampiyonu belirle
+                $top_rows = $pdo->query(
+                    "SELECT takim_adi, puan, atilan_gol, yenilen_gol FROM {$lig['takimlar']}
+                      ORDER BY puan DESC, (atilan_gol-yenilen_gol) DESC, atilan_gol DESC LIMIT 4"
+                )->fetchAll(PDO::FETCH_ASSOC);
+                if (!empty($top_rows)) {
+                    $sampiyon_adi = $top_rows[0]['takim_adi'];
+                    $lig_kod = $lig['kod'] ?? strtolower(str_replace(' ', '_', $lig['ad']));
+                    $sonuc_mesajlari[] = sampiyon_blok_olustur($lig['ad'], $sampiyon_adi, $lig_kod, $top_rows);
+                }
+            }
+        } catch (Throwable $e) {}
     }
     // Bildirim için session
     if (session_status() === PHP_SESSION_NONE) session_start();
@@ -165,7 +271,12 @@ if (isset($_POST['global_hafta_oyna'])) {
 // AKSİYON: TÜM SEZONU SİMÜLE ET
 // ================================================================
 if (isset($_POST['tum_sezonu_simule'])) {
+    $sezon_sampiyonlar = [];
     foreach ($ligler as $lig) {
+        // Ligue 1 destek mesajı
+        if ($lig['ad'] === 'Ligue 1') {
+            error_log("Ligue 1 destekleniyor");
+        }
         try {
             $hafta_row = $pdo->query("SELECT hafta FROM {$lig['ayar']} LIMIT 1")->fetchColumn();
             $hafta_baslangic = (int)$hafta_row;
@@ -184,7 +295,22 @@ if (isset($_POST['tum_sezonu_simule'])) {
             $max_son = (int)$lig['max'];
             $pdo->prepare("UPDATE {$lig['ayar']} SET hafta = ?")->execute([$max_son]);
         } catch (Throwable $e) {}
+
+        // Şampiyonu belirle
+        try {
+            $top_rows = $pdo->query(
+                "SELECT takim_adi, puan, atilan_gol, yenilen_gol FROM {$lig['takimlar']}
+                  ORDER BY puan DESC, (atilan_gol-yenilen_gol) DESC, atilan_gol DESC LIMIT 4"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            if (!empty($top_rows)) {
+                $lig_kod = $lig['kod'] ?? strtolower(str_replace(' ', '_', $lig['ad']));
+                $sezon_sampiyonlar[] = sampiyon_blok_olustur($lig['ad'], $top_rows[0]['takim_adi'], $lig_kod, $top_rows);
+            }
+        } catch (Throwable $e) {}
     }
+    // Şampiyon listesini session'a kaydet
+    if (session_status() === PHP_SESSION_NONE) session_start();
+    $_SESSION['play_week_sonuc'] = $sezon_sampiyonlar;
     // Sezon sonu ekranına yönlendir (Super Lig sezon geçişi)
     header("Location: super_lig/sezon_gecisi.php");
     exit;
