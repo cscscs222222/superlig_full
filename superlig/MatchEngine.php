@@ -53,6 +53,21 @@ class MatchEngine {
         $this->prefix = $prefix;
     }
 
+    // --- POISSON DAĞILIMI (Knuth algoritması) ---
+    // Gerçek futbol istatistiklerine dayalı gol üretimi için kullanılır.
+    // Lambda: beklenen gol sayısı (xG). Dönüş: rastgele Poisson sayısı.
+    private function poisson_rand(float $lambda): int {
+        if ($lambda <= 0.0) return 0;
+        $L = exp(-$lambda);
+        $k = 0;
+        $p = 1.0;
+        do {
+            $k++;
+            $p *= mt_rand() / mt_getrandmax();
+        } while ($p > $L);
+        return $k - 1;
+    }
+
     // --- FAZ 2: DERBİ KONTROL ---
     // Verilen iki takım id'sinin derbi olup olmadığını döndürür.
     public function is_derbi($ev_id, $dep_id) {
@@ -94,76 +109,91 @@ class MatchEngine {
         return $hava;
     }
 
-    // --- 1. xG (BEKLENEN GOL) TABANLI GERÇEKÇİ SKOR HESAPLAYICI (FAZ 2 GELİŞTİRİLMİŞ) ---
+    // --- 1. xG (BEKLENEN GOL) TABANLI GERÇEKÇİ SKOR HESAPLAYICI ---
+    // MAKSİMUM GERÇEKÇİLİK: Poisson dağılımı + gerçek futbol istatistikleri
+    // Ortalama maç başına gol: 2.6 – 3.3; ev sahibi avantajı: ~+0.35 gol
     public function gercekci_skor_hesapla($ev_id, $dep_id, $mac_bilgisi = null) {
         $tbl_oyuncular = $this->prefix . 'oyuncular';
-        $tbl_takimlar = $this->prefix . 'takimlar';
+        $tbl_takimlar  = $this->prefix . 'takimlar';
 
-        // 1. Sahadaki ilk 11'in form ve yorgunluğa göre anlık ortalamasını al
-        $stmt = $this->pdo->prepare("SELECT AVG(ovr + (form-5) + ((fitness-100)*0.1)) FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1");
+        // 1. Takımların hücum / savunma güçlerini al
+        $stmt = $this->pdo->prepare("SELECT hucum, savunma FROM $tbl_takimlar WHERE id=?");
         $stmt->execute([$ev_id]);
-        $ev_ort = $stmt->fetchColumn();
+        $ev_takim  = $stmt->fetch(PDO::FETCH_ASSOC);
         $stmt->execute([$dep_id]);
-        $dep_ort = $stmt->fetchColumn();
+        $dep_takim = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        // 2. Takımların veritabanındaki sabit hücum/savunma güçlerini al (Hata vermemesi için motor kendi bulur)
-        $stmt2 = $this->pdo->prepare("SELECT hucum, savunma FROM $tbl_takimlar WHERE id=?");
-        $stmt2->execute([$ev_id]);
-        $ev_takim = $stmt2->fetch(PDO::FETCH_ASSOC);
-        $stmt2->execute([$dep_id]);
-        $dep_takim = $stmt2->fetch(PDO::FETCH_ASSOC);
+        // Kayıt yoksa varsayılan güç 70
+        $ev_hucum    = ($ev_takim  && isset($ev_takim['hucum']))    ? (float)$ev_takim['hucum']    : 70.0;
+        $ev_savunma  = ($ev_takim  && isset($ev_takim['savunma']))  ? (float)$ev_takim['savunma']  : 70.0;
+        $dep_hucum   = ($dep_takim && isset($dep_takim['hucum']))   ? (float)$dep_takim['hucum']   : 70.0;
+        $dep_savunma = ($dep_takim && isset($dep_takim['savunma'])) ? (float)$dep_takim['savunma'] : 70.0;
 
-        // Yeni/eksik liglerde takım kaydı olmayabilir; varsayılan güç 70 kullan
-        $ev_takim_guc  = ($ev_takim  && isset($ev_takim['hucum']))  ? (($ev_takim['hucum']  + $ev_takim['savunma'])  / 2) : 70;
-        $dep_takim_guc = ($dep_takim && isset($dep_takim['hucum'])) ? (($dep_takim['hucum'] + $dep_takim['savunma']) / 2) : 70;
+        // 2. İlk 11'in form ve fitness'a göre anlık OVR ortalaması
+        $stmt2 = $this->pdo->prepare(
+            "SELECT AVG(ovr + (form-5) + ((fitness-100)*0.1)) FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1"
+        );
+        $stmt2->execute([$ev_id]);  $ev_ort  = (float)($stmt2->fetchColumn() ?: $ev_hucum);
+        $stmt2->execute([$dep_id]); $dep_ort = (float)($stmt2->fetchColumn() ?: $dep_hucum);
+        if ($ev_ort  < 10) $ev_ort  = $ev_hucum;
+        if ($dep_ort < 10) $dep_ort = $dep_hucum;
 
-        // --- FAZ 3: OYUNCU KİMYASI ---
-        // Aynı uyruklu/ligden oyuncular takıma bonus OVR katar
+        // 3. Oyuncu kimyası bonusu (FAZ 3)
         $ev_kimya  = $this->kimya_hesapla($ev_id);
         $dep_kimya = $this->kimya_hesapla($dep_id);
+        $ev_ort  += $ev_kimya['bonus'];
+        $dep_ort += $dep_kimya['bonus'];
 
-        // 3. Nihai Gücü Hesapla
-        $ev_guc  = ($ev_ort  !== null && $ev_ort  !== false ? (float)$ev_ort  : $ev_takim_guc)  + 3 + $ev_kimya['bonus']; // Ev sahibi taraftar avantajı (+3)
-        $dep_guc = ($dep_ort !== null && $dep_ort !== false ? (float)$dep_ort : $dep_takim_guc) + $dep_kimya['bonus'];
-
-        // --- FAZ 2: DERBİ ATMOSFER SİSTEMİ ---
-        // Derbi maçlarda deplasman takımı taraftar baskısından -5 moral penaltısı alır.
-        if ($this->is_derbi($ev_id, $dep_id)) {
-            $dep_guc = max(40, $dep_guc - 5);
-        }
-
-        // --- FAZ 2: HAVa DURUMU MODİFİKATÖRLERİ ---
+        // 4. Hava durumu etkisi
         $hava = isset($mac_bilgisi['hava_durumu']) ? $mac_bilgisi['hava_durumu'] : 'Güneşli';
-        $rasgellik_katsayi = 1.0; // Karlı havada artar
         if ($hava === 'Yağmurlu') {
-            // Yağmurlu: kondisyon daha hızlı düşer → güç hafifçe azalır, beraberlik olasılığı artar
-            $ev_guc  = max(40, $ev_guc  - 2);
-            $dep_guc = max(40, $dep_guc - 2);
-        } elseif ($hava === 'Karlı') {
-            // Karlı: sürpriz goller artar (rastgelelik katsayısı yükselir)
-            $rasgellik_katsayi = 1.8;
+            $ev_ort  = max(40.0, $ev_ort  - 2);
+            $dep_ort = max(40.0, $dep_ort - 2);
         }
 
-        // 4. xG Algoritması
-        $guc_farki = $ev_guc - $dep_guc;
-        $ev_beklenen = max(0.1, 1.4 + ($guc_farki * 0.08));
-        $dep_beklenen = max(0.1, 1.2 - ($guc_farki * 0.08));
-
-        $ev_skor = 0; $dep_skor = 0;
-        for($i=0; $i<6; $i++) { if((rand(0,100)/100) < ($ev_beklenen / 4.5)) $ev_skor++; }
-        for($i=0; $i<6; $i++) { if((rand(0,100)/100) < ($dep_beklenen / 4.5)) $dep_skor++; }
-
-        // Sürpriz/Şans Faktörü (karlı havada daha sık tetiklenir)
-        $surpriz_esik = (int)(12 * $rasgellik_katsayi);
-        if(rand(1, 100) <= $surpriz_esik) {
-            if($ev_guc < $dep_guc) $ev_skor += rand(1, 2);
-            else $dep_skor += rand(1, 2);
+        // 5. Derbi atmosferi (deplasman -5 OVR baskısı)
+        if ($this->is_derbi($ev_id, $dep_id)) {
+            $dep_ort = max(40.0, $dep_ort - 5);
         }
 
-        // MAÇ SONUCU BELLİ OLDU! ŞİMDİ OYUNCULARI GELİŞTİR/YOR/DÜŞÜR
+        // 6. xG Hesabı: Gerçekçi Oran Formülü
+        //    xG_Ev  = (Hücum_Ev  / Savunma_Dep) × 1.62  [ev avantajı dahil]
+        //    xG_Dep = (Hücum_Dep / Savunma_Ev)  × 1.27
+        //    Eşit takımlarda (ort=70): xG_Ev=1.62, xG_Dep=1.27, toplam=2.89 ✓
+        $ev_atk  = $ev_hucum   * 0.6 + $ev_ort  * 0.4;
+        $dep_def = $dep_savunma * 0.6 + $dep_ort * 0.4;
+        $dep_atk = $dep_hucum  * 0.6 + $dep_ort * 0.4;
+        $ev_def  = $ev_savunma  * 0.6 + $ev_ort  * 0.4;
+
+        $xg_ev  = max(0.30, min(3.20, ($ev_atk  / max(30.0, $dep_def)) * 1.62));
+        $xg_dep = max(0.30, min(2.80, ($dep_atk / max(30.0, $ev_def))  * 1.27));
+
+        // Karlı hava: biraz daha rastgele (lambda'yı ±%10 oynat)
+        if ($hava === 'Karlı') {
+            $xg_ev  *= mt_rand(90, 110) / 100.0;
+            $xg_dep *= mt_rand(90, 110) / 100.0;
+        }
+
+        // 7. Poisson dağılımı ile skor üret
+        $ev_skor  = $this->poisson_rand($xg_ev);
+        $dep_skor = $this->poisson_rand($xg_dep);
+
+        // 8. Gerçekçilik Kapağı: OVR farkına göre maksimum skor sınırı
+        //    Saçma skorları (8-0, 9-2) önler; fark <35 → max 5, ≥35 → max 6
+        $ovr_farki  = abs($ev_ort - $dep_ort);
+        $maks_skor  = ($ovr_farki >= 35) ? 6 : 5;
+        $ev_skor  = max(0, min($ev_skor,  $maks_skor));
+        $dep_skor = max(0, min($dep_skor, $maks_skor));
+
+        // 9. Dinamik maç sonu etkisi (form, fitness, sakatlık)
         $this->dinamik_mac_sonu_etkisi($ev_id, $dep_id, $ev_skor, $dep_skor, $hava);
 
-        return ['ev' => $ev_skor, 'dep' => $dep_skor];
+        return [
+            'ev'      => $ev_skor,
+            'dep'     => $dep_skor,
+            'xg_ev'   => round($xg_ev,  2),
+            'xg_dep'  => round($xg_dep, 2),
+        ];
     }
 
     // --- 2. DİNAMİK GELİŞİM, YAŞLANMA VE FİTNESS (FAZ 2: Hava Etkisi Dahil) ---
@@ -242,7 +272,9 @@ class MatchEngine {
         }
     }
 
-    // --- 3. AKILLI MAÇ OLAYI (GOL, KART, ASİST, VAR, KALECİ KURTARIŞI) ÜRETİCİSİ ---
+    // --- 3. MAKSİMUM GERÇEKÇİLİK: MAÇ OLAYI ÜRETİCİSİ ---
+    // Kart, gol, VAR ve maç sonu istatistikleri gerçek futbol verilerine göre hesaplanır.
+    // Kırmızı kart: 0.25-0.40/maç · Sarı kart: 3.8-5.2/maç · Penaltı: 0.25-0.35/maç
     public function mac_olay_uret($takim_id, $skor) {
         // Validate prefix against known league prefixes to prevent SQL injection
         $allowed_prefixes = ['', 'pl_', 'es_', 'de_', 'it_', 'fr_', 'pt_', 'cl_', 'uel_', 'uecl_'];
@@ -252,84 +284,190 @@ class MatchEngine {
         $oyuncular = $this->pdo->prepare("SELECT isim, mevki FROM $tbl_oyuncular WHERE takim_id=? AND ilk_11=1");
         $oyuncular->execute([$takim_id]);
         $oyuncular = $oyuncular->fetchAll(PDO::FETCH_ASSOC);
-        if(!$oyuncular || count($oyuncular) == 0) {
+        if (!$oyuncular || count($oyuncular) == 0) {
             $stmt_all = $this->pdo->prepare("SELECT isim, mevki FROM $tbl_oyuncular WHERE takim_id=?");
             $stmt_all->execute([$takim_id]);
             $oyuncular = $stmt_all->fetchAll(PDO::FETCH_ASSOC);
         }
-        if(!$oyuncular || count($oyuncular) == 0) { $oyuncular = [['isim' => 'Altyapı (AI)', 'mevki' => 'F']]; }
-
-        $golculer = [];
-        foreach($oyuncular as $o) {
-            if($o['mevki'] == 'F') { $golculer[] = $o; $golculer[] = $o; $golculer[] = $o; }
-            elseif($o['mevki'] == 'OS') { $golculer[] = $o; $golculer[] = $o; }
-            else { $golculer[] = $o; }
+        if (!$oyuncular || count($oyuncular) == 0) {
+            $oyuncular = [['isim' => 'Altyapı (AI)', 'mevki' => 'F']];
         }
 
-        // Kalecileri ayrıca tespit et
+        // Mevkiye göre ağırlıklı gol atıcı listesi (F=3x, OS=2x, D/K=1x)
+        $golculer = [];
+        foreach ($oyuncular as $o) {
+            if ($o['mevki'] == 'F')       { $golculer[] = $o; $golculer[] = $o; $golculer[] = $o; }
+            elseif ($o['mevki'] == 'OS')  { $golculer[] = $o; $golculer[] = $o; }
+            else                          { $golculer[] = $o; }
+        }
+
+        // Kalecileri tespit et
         $kaleciler = array_filter($oyuncular, function($o){ return $o['mevki'] == 'K'; });
 
-        $olaylar = []; $kartlar = []; $sakatlar = [];
-
-        for($i=0; $i<$skor; $i++) {
-            $gol_atan = $golculer[array_rand($golculer)]['isim'];
-            $asist_yapan = (rand(0,10) > 3) ? $oyuncular[array_rand($oyuncular)]['isim'] : '-';
-            if($gol_atan == $asist_yapan) $asist_yapan = '-';
-            $olaylar[] = ['tip' => 'gol', 'dakika' => rand(2, 95), 'oyuncu' => $gol_atan, 'asist' => $asist_yapan];
+        // ----------------------------------------------------------------
+        // GOL OLAYLARI — dakika gerçekçi dağıtılır
+        // ----------------------------------------------------------------
+        $olaylar = [];
+        $sakatlar = [];
+        $kullanilan_dakikalar = [];
+        for ($i = 0; $i < $skor; $i++) {
+            $gol_atan    = $golculer[array_rand($golculer)]['isim'];
+            $asist_yapan = (mt_rand(0, 10) > 3) ? $oyuncular[array_rand($oyuncular)]['isim'] : '-';
+            if ($asist_yapan === $gol_atan) $asist_yapan = '-';
+            // Benzersiz dakika ata (skor yüksekse üst üste gelebilir)
+            $deneme = 0;
+            do {
+                $dk = mt_rand(3, 93);
+                $deneme++;
+            } while (in_array($dk, $kullanilan_dakikalar, true) && $deneme < 20);
+            $kullanilan_dakikalar[] = $dk;
+            $olaylar[] = [
+                'tip'    => 'gol',
+                'dakika' => $dk,
+                'oyuncu' => $gol_atan,
+                'asist'  => $asist_yapan,
+            ];
         }
 
-        $kart_sayisi = rand(0, 3);
-        for($i=0; $i<$kart_sayisi; $i++) {
-            $kart_goren = $oyuncular[array_rand($oyuncular)]['isim'];
-            $tip = (rand(0, 10) > 8) ? 'Kırmızı' : 'Sarı';
-            $kartlar[] = ['tip' => 'kart', 'detay' => $tip, 'dakika' => rand(5, 90), 'oyuncu' => $kart_goren];
+        // ----------------------------------------------------------------
+        // KART OLAYLARI — GERÇEKÇİ ORANLAR
+        // Sarı kart: Poisson(2.25)/takım → toplam ~4.5/maç ✓ (3.8-5.2 arası)
+        // Kırmızı kart: %16 ihtimal/takım → toplam ~0.32/maç ✓ (0.25-0.40 arası)
+        // Doğrudan kırmızı kart: ~%8 (çok vahşi müdahale); geri kalanı ikinci sarı
+        // ----------------------------------------------------------------
+        $kartlar = [];
+        $kart_oyuncular = []; // Aynı oyuncuya iki kez kart çıkmasın
+
+        $sari_sayisi = min(5, $this->poisson_rand(2.25));
+        for ($i = 0; $i < $sari_sayisi; $i++) {
+            // Kalecilere kart az çıkar
+            $aday = $oyuncular[array_rand($oyuncular)];
+            if ($aday['mevki'] === 'K' && mt_rand(1, 100) > 15) {
+                $aday = $oyuncular[array_rand($oyuncular)];
+            }
+            $kartlar[] = [
+                'tip'    => 'kart',
+                'detay'  => 'Sarı',
+                'dakika' => mt_rand(5, 88),
+                'oyuncu' => $aday['isim'],
+            ];
+            $kart_oyuncular[] = $aday['isim'];
+        }
+
+        // Kırmızı kart: %16 ihtimal; maksimum 1 per takım
+        if (mt_rand(1, 100) <= 16) {
+            $kirmizi_aday = $oyuncular[array_rand($oyuncular)];
+            // Kaleci kırmızı çok nadir
+            if ($kirmizi_aday['mevki'] === 'K' && mt_rand(1, 100) > 5) {
+                $kirmizi_aday = $oyuncular[array_rand($oyuncular)];
+            }
+            // İkinci sarı mı yoksa direk kırmızı mı?
+            if (in_array($kirmizi_aday['isim'], $kart_oyuncular, true) && mt_rand(1, 100) <= 60) {
+                // İkinci sarı → kırmızı: var olan sarı kartı güncelle
+                foreach ($kartlar as &$k) {
+                    if ($k['oyuncu'] === $kirmizi_aday['isim'] && $k['detay'] === 'Sarı') {
+                        $k['detay']  = 'Sarı → Kırmızı';
+                        $k['dakika'] = max($k['dakika'] + mt_rand(5, 30), mt_rand(50, 88));
+                        break;
+                    }
+                }
+                unset($k);
+            } else {
+                // Doğrudan kırmızı (ciddi faul / DOGSO)
+                $kartlar[] = [
+                    'tip'    => 'kart',
+                    'detay'  => 'Kırmızı',
+                    'dakika' => mt_rand(10, 85),
+                    'oyuncu' => $kirmizi_aday['isim'],
+                ];
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // PENALTİ OLAYLARI — 0.15 ihtimal/takım → ~0.30/maç ✓ (0.25-0.35 arası)
+        // Penaltıların %75'i gole dönüşür (zaten $skor içinde sayılır);
+        // burada sadece 'penalti' tipi bir bilgi etiketi ekliyoruz.
+        // ----------------------------------------------------------------
+        if (mt_rand(1, 100) <= 15) {
+            $pen_atici = $golculer[array_rand($golculer)]['isim'];
+            $pen_dk    = mt_rand(15, 90);
+            $pen_gol   = (mt_rand(1, 100) <= 75);
+            $olaylar[] = [
+                'tip'    => 'penalti',
+                'dakika' => $pen_dk,
+                'oyuncu' => $pen_atici,
+                'gol'    => $pen_gol,
+                'ozel'   => $pen_gol ? '⚽ Penaltı Golü!' : '🧤 Penaltı Kurtarıldı!',
+            ];
+        }
+
+        // ----------------------------------------------------------------
+        // BÜYÜK FIRSAT KAÇIRILDI — Big Chance Miss; %30 ihtimalle eklenir
+        // ----------------------------------------------------------------
+        if (mt_rand(1, 100) <= 30) {
+            $kaciran  = $golculer[array_rand($golculer)]['isim'];
+            $olaylar[] = [
+                'tip'    => 'big_miss',
+                'dakika' => mt_rand(5, 90),
+                'oyuncu' => $kaciran,
+                'ozel'   => '😱 Büyük fırsat kaçtı!',
+            ];
         }
 
         // --- FAZ 3: PLAY STYLES - FRİKİK USTASI ---
-        // Eğer takımda Frikik Ustası varsa, serbest vuruş golü üret
         $this->playstyle_serbest_vurus($takim_id, $olaylar);
 
         usort($olaylar, function($a, $b) { return $a['dakika'] <=> $b['dakika']; });
         usort($kartlar, function($a, $b) { return $a['dakika'] <=> $b['dakika']; });
 
-        // --- FAZ 2: VAR SİSTEMİ ---
-        // Her maçta %20 ihtimalle VAR olayı tetiklenir.
-        // Gol iptali: en son golü sil, VAR olayı ekle.
-        // Kırmızı kart: VAR sonucu kırmızı kart (kartlara eklenir).
+        // ----------------------------------------------------------------
+        // VAR SİSTEMİ — GERÇEKÇİ SINIRLAR
+        // Sadece marginal ofsaytlar veya kırmızı kart incelemeleri.
+        // İhtimal: %5/takım çağrısı → %10/maç.
+        // VAR kırmızı kart eklemez; sadece inceleme olayı.
+        // ----------------------------------------------------------------
         $var_olaylar = [];
-        if (rand(1, 100) <= 20) {
-            $var_dk = rand(15, 88);
-            $var_tip = (rand(0, 1) == 0) ? 'var_gol_iptal' : 'var_kirmizi';
+        if (mt_rand(1, 100) <= 5) {
+            $var_dk  = mt_rand(15, 88);
+            $var_tip = (mt_rand(0, 1) == 0) ? 'var_gol_iptal' : 'var_kirmizi_inceleme';
 
             if ($var_tip === 'var_gol_iptal' && count($olaylar) > 0) {
-                // Son golü iptal et
-                $iptal_gol = array_pop($olaylar);
-                $var_olaylar[] = [
-                    'tip'    => 'var_gol_iptal',
-                    'dakika' => max($iptal_gol['dakika'] + 1, $var_dk),
-                    'oyuncu' => $iptal_gol['oyuncu'],
-                    'neden'  => (rand(0,1) ? 'ofsayt' : 'faul'),
-                ];
-            } elseif ($var_tip === 'var_kirmizi') {
+                // Gol içeren son olayı bul ve VAR ile iptal et
+                $iptal_idx = null;
+                for ($vi = count($olaylar) - 1; $vi >= 0; $vi--) {
+                    if ($olaylar[$vi]['tip'] === 'gol') { $iptal_idx = $vi; break; }
+                }
+                if ($iptal_idx !== null) {
+                    $iptal_gol = $olaylar[$iptal_idx];
+                    unset($olaylar[$iptal_idx]);
+                    $olaylar = array_values($olaylar);
+                    $var_olaylar[] = [
+                        'tip'    => 'var_gol_iptal',
+                        'dakika' => max($iptal_gol['dakika'] + 1, $var_dk),
+                        'oyuncu' => $iptal_gol['oyuncu'],
+                        'neden'  => 'marginal_ofsayt',
+                    ];
+                }
+            } elseif ($var_tip === 'var_kirmizi_inceleme' && !empty($oyuncular)) {
+                // VAR inceleme: kırmızı kart riskli faul review (kart eklenmez, sadece bilgi)
                 $hedef = $oyuncular[array_rand($oyuncular)]['isim'];
                 $var_olaylar[] = [
-                    'tip'    => 'var_kirmizi',
+                    'tip'    => 'var_kirmizi_inceleme',
                     'dakika' => $var_dk,
                     'oyuncu' => $hedef,
-                    'neden'  => (rand(0,1) ? 'sert_faul' : 'kol_hareketi'),
+                    'neden'  => 'kirmizi_kart_inceleme',
                 ];
-                // Kart listesine de ekle
-                $kartlar[] = ['tip' => 'kart', 'detay' => 'Kırmızı', 'dakika' => $var_dk + 2, 'oyuncu' => $hedef];
             }
         }
 
-        // --- FAZ 2: KALECİ KURTARIŞLARI ---
-        // Rakip takım $skor gol attıysa, kaleci bir kısım şutu kurtardı demektir.
-        // Kurtarış = (atılan toplam şut) - (yenilen goller)
-        $toplam_sut   = $skor + rand(2, 6); // Maçta atılan şut sayısı tahmini
-        $kurtaris_say = max(0, $toplam_sut - $skor);
+        // ----------------------------------------------------------------
+        // KALECİ KURTARIŞLARI
+        // Şut isabet oranı %30-35; gol dönüşüm oranı %9-12
+        // ----------------------------------------------------------------
+        $toplam_sut   = max($skor, mt_rand(9, 14));    // toplam şut ~9-14/takım
+        $isabetli_sut = (int)round($toplam_sut * (mt_rand(28, 36) / 100));  // %28-36 isabet
+        $kurtaris_say = max(0, $isabetli_sut - $skor);
 
-        // Kalecinin DB'de kurtarış sayısını güncelle
         if (!empty($kaleciler)) {
             $kaleci = array_values($kaleciler)[0];
             try {
@@ -340,8 +478,9 @@ class MatchEngine {
             } catch (Throwable $e) { /* kurtaris sütunu henüz yoksa sessizce geç */ }
         }
 
-        // --- BALLON D'OR / ALTIN AYAKKABI: SEZON GOL VE ASİST SAYAÇLARINI GÜNCELLE ---
-        // VAR sonrası onaylanan golleri say ve oyuncu bazında topla
+        // ----------------------------------------------------------------
+        // BALLON D'OR / ALTIN AYAKKABI: SEZON GOL VE ASİST SAYAÇLARI
+        // ----------------------------------------------------------------
         $gol_sayac   = [];
         $asist_sayac = [];
         foreach ($olaylar as $olay) {
@@ -356,25 +495,58 @@ class MatchEngine {
             $stmt_g = $this->pdo->prepare(
                 "UPDATE {$tbl_oyuncular} SET sezon_gol = sezon_gol + ? WHERE takim_id = ? AND isim = ? LIMIT 1"
             );
-            foreach ($gol_sayac as $isim => $adet) {
-                $stmt_g->execute([$adet, $takim_id, $isim]);
-            }
+            foreach ($gol_sayac as $isim => $adet) { $stmt_g->execute([$adet, $takim_id, $isim]); }
             $stmt_a = $this->pdo->prepare(
                 "UPDATE {$tbl_oyuncular} SET sezon_asist = sezon_asist + ? WHERE takim_id = ? AND isim = ? LIMIT 1"
             );
-            foreach ($asist_sayac as $isim => $adet) {
-                $stmt_a->execute([$adet, $takim_id, $isim]);
+            foreach ($asist_sayac as $isim => $adet) { $stmt_a->execute([$adet, $takim_id, $isim]); }
+        } catch (Throwable $e) { /* sütunlar yoksa sessizce geç */ }
+
+        // ----------------------------------------------------------------
+        // MAÇ SONU İSTATİSTİKLERİ — Gerçekçi post-match istatistik paketi
+        // ----------------------------------------------------------------
+        $sari_kart_sayisi   = count(array_filter($kartlar, fn($k) => in_array($k['detay'], ['Sarı', 'Sarı → Kırmızı'])));
+        $kirmizi_kart_sayisi = count(array_filter($kartlar, fn($k) => in_array($k['detay'], ['Kırmızı', 'Sarı → Kırmızı'])));
+        $mac_istatistik = [
+            'sut'          => $toplam_sut,
+            'isabetli_sut' => $isabetli_sut,
+            'xg'           => round($skor > 0 ? $skor * mt_rand(90, 130) / 100 : mt_rand(40, 90) / 100, 2),
+            'korner'       => mt_rand(3, 8),
+            'faul'         => $sari_kart_sayisi * mt_rand(2, 4) + mt_rand(2, 5),
+            'ofsayt'       => mt_rand(1, 5),
+            'sari_kart'    => $sari_kart_sayisi,
+            'kirmizi_kart' => $kirmizi_kart_sayisi,
+        ];
+
+        // ----------------------------------------------------------------
+        // MAÇIN ADAMI (Man of the Match)
+        // ----------------------------------------------------------------
+        $motm = null;
+        arsort($gol_sayac);
+        if (!empty($gol_sayac)) {
+            $motm = array_key_first($gol_sayac); // En çok gol atan
+        } else {
+            // Gol yok: savunma / orta saha oyuncusu seç
+            $diger = array_filter($oyuncular, fn($o) => in_array($o['mevki'], ['D', 'OS']));
+            if (!empty($diger)) {
+                $diger = array_values($diger);
+                $motm = $diger[array_rand($diger)]['isim'];
+            } elseif (!empty($oyuncular)) {
+                $motm = $oyuncular[array_rand($oyuncular)]['isim'];
             }
-        } catch (Throwable $e) { /* sezon_gol/sezon_asist sütunları henüz yoksa sessizce geç */ }
+        }
 
         return [
-            'olaylar'     => json_encode($olaylar,     JSON_UNESCAPED_UNICODE),
-            'kartlar'     => json_encode($kartlar,      JSON_UNESCAPED_UNICODE),
-            'sakatlar'    => json_encode($sakatlar,     JSON_UNESCAPED_UNICODE),
-            'var_olaylar' => json_encode($var_olaylar,  JSON_UNESCAPED_UNICODE),
-            'kurtaris'    => $kurtaris_say,
+            'olaylar'        => json_encode($olaylar,        JSON_UNESCAPED_UNICODE),
+            'kartlar'        => json_encode($kartlar,         JSON_UNESCAPED_UNICODE),
+            'sakatlar'       => json_encode($sakatlar,        JSON_UNESCAPED_UNICODE),
+            'var_olaylar'    => json_encode($var_olaylar,     JSON_UNESCAPED_UNICODE),
+            'kurtaris'       => $kurtaris_say,
+            'mac_istatistik' => json_encode($mac_istatistik, JSON_UNESCAPED_UNICODE),
+            'motm'           => $motm,
         ];
     }
+
 
     // =========================================================================
     // FAZ 3: OYUNCU KİMYASI (PLAYER CHEMISTRY)
