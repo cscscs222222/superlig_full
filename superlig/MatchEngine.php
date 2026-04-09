@@ -275,7 +275,8 @@ class MatchEngine {
     // --- 3. MAKSİMUM GERÇEKÇİLİK: MAÇ OLAYI ÜRETİCİSİ ---
     // Kart, gol, VAR ve maç sonu istatistikleri gerçek futbol verilerine göre hesaplanır.
     // Kırmızı kart: 0.25-0.40/maç · Sarı kart: 3.8-5.2/maç · Penaltı: 0.25-0.35/maç
-    public function mac_olay_uret($takim_id, $skor) {
+    // $xg: gercekci_skor_hesapla()'dan dönen takım xG değeri (isteğe bağlı)
+    public function mac_olay_uret($takim_id, $skor, float $xg = -1.0) {
         // Validate prefix against known league prefixes to prevent SQL injection
         $allowed_prefixes = ['', 'pl_', 'es_', 'de_', 'it_', 'fr_', 'pt_', 'cl_', 'uel_', 'uecl_'];
         $safe_prefix = in_array($this->prefix, $allowed_prefixes, true) ? $this->prefix : '';
@@ -429,7 +430,7 @@ class MatchEngine {
         $var_olaylar = [];
         if (mt_rand(1, 100) <= 5) {
             $var_dk  = mt_rand(15, 88);
-            $var_tip = (mt_rand(0, 1) == 0) ? 'var_gol_iptal' : 'var_kirmizi_inceleme';
+            $var_tip = (mt_rand(0, 1) == 0) ? 'var_gol_iptal' : 'var_kırmızı_inceleme';
 
             if ($var_tip === 'var_gol_iptal' && count($olaylar) > 0) {
                 // Gol içeren son olayı bul ve VAR ile iptal et
@@ -448,14 +449,14 @@ class MatchEngine {
                         'neden'  => 'marginal_ofsayt',
                     ];
                 }
-            } elseif ($var_tip === 'var_kirmizi_inceleme' && !empty($oyuncular)) {
+            } elseif ($var_tip === 'var_kırmızı_inceleme' && !empty($oyuncular)) {
                 // VAR inceleme: kırmızı kart riskli faul review (kart eklenmez, sadece bilgi)
                 $hedef = $oyuncular[array_rand($oyuncular)]['isim'];
                 $var_olaylar[] = [
-                    'tip'    => 'var_kirmizi_inceleme',
+                    'tip'    => 'var_kırmızı_inceleme',
                     'dakika' => $var_dk,
                     'oyuncu' => $hedef,
-                    'neden'  => 'kirmizi_kart_inceleme',
+                    'neden'  => 'kırmızı_kart_inceleme',
                 ];
             }
         }
@@ -505,12 +506,15 @@ class MatchEngine {
         // ----------------------------------------------------------------
         // MAÇ SONU İSTATİSTİKLERİ — Gerçekçi post-match istatistik paketi
         // ----------------------------------------------------------------
-        $sari_kart_sayisi   = count(array_filter($kartlar, fn($k) => in_array($k['detay'], ['Sarı', 'Sarı → Kırmızı'])));
+        // Sadece 'Sarı' sayılır (ikinci sarı → kırmızı, kırmızı sayılır)
+        $sari_kart_sayisi    = count(array_filter($kartlar, fn($k) => $k['detay'] === 'Sarı'));
         $kirmizi_kart_sayisi = count(array_filter($kartlar, fn($k) => in_array($k['detay'], ['Kırmızı', 'Sarı → Kırmızı'])));
+        // xG: gercekci_skor_hesapla()'dan geçirildiyse kullan, yoksa şutlardan tahmin et
+        $post_xg = ($xg >= 0.0) ? round($xg, 2) : round($toplam_sut * 0.105, 2);
         $mac_istatistik = [
             'sut'          => $toplam_sut,
             'isabetli_sut' => $isabetli_sut,
-            'xg'           => round($skor > 0 ? $skor * mt_rand(90, 130) / 100 : mt_rand(40, 90) / 100, 2),
+            'xg'           => $post_xg,
             'korner'       => mt_rand(3, 8),
             'faul'         => $sari_kart_sayisi * mt_rand(2, 4) + mt_rand(2, 5),
             'ofsayt'       => mt_rand(1, 5),
