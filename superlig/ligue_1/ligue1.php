@@ -164,10 +164,31 @@ if($mac_sayisi == 0) {
 if(isset($_GET['action'])) {
     $action = $_GET['action'];
 
+    // BU SEZONU SIFIRLA
+    if($action == 'bu_sezon_sifirla') {
+        $pdo->exec("TRUNCATE TABLE fr_maclar");
+        $pdo->exec("UPDATE fr_takimlar SET puan=0, galibiyet=0, beraberlik=0, malubiyet=0, atilan_gol=0, yenilen_gol=0");
+        $pdo->exec("UPDATE fr_oyuncular SET sezon_gol=0, sezon_asist=0, form=6, fitness=100, moral=80, ceza_hafta=0, sakatlik_hafta=0, mac_puani_ort=6.00");
+        $pdo->exec("UPDATE fr_ayar SET hafta=1");
+        header("Location: ligue1.php?sifirla=bu_sezon"); exit;
+    }
+
+    // TÜM SEZONLARI SIFIRLA
+    if($action == 'tum_sezon_sifirla') {
+        $pdo->exec("TRUNCATE TABLE fr_maclar");
+        $pdo->exec("UPDATE fr_takimlar SET puan=0, galibiyet=0, beraberlik=0, malubiyet=0, atilan_gol=0, yenilen_gol=0");
+        $pdo->exec("UPDATE fr_oyuncular SET sezon_gol=0, sezon_asist=0, toplam_mac=0, toplam_gol=0, form=6, fitness=100, moral=80, ceza_hafta=0, sakatlik_hafta=0, mac_puani_ort=6.00");
+        try { $pdo->exec("UPDATE fr_ayar SET hafta=1, sezon_yil=2025, gecen_sezon_sampiyon=NULL"); } catch(Throwable $e) { $pdo->exec("UPDATE fr_ayar SET hafta=1, sezon_yil=2025"); }
+        try { $pdo->exec("TRUNCATE TABLE fr_haberler"); } catch(Throwable $e) {}
+        header("Location: ligue1.php?sifirla=tum_sezon"); exit;
+    }
+
     if($action == 'sezonu_simule') {
         for($h = $hafta; $h <= $max_hafta; $h++) {
             $maclar_h = $pdo->query("SELECT m.*,t1.hucum as ev_hucum,t1.savunma as ev_savunma,t2.hucum as dep_hucum,t2.savunma as dep_savunma FROM fr_maclar m JOIN fr_takimlar t1 ON m.ev=t1.id JOIN fr_takimlar t2 ON m.dep=t2.id WHERE m.hafta=$h AND m.ev_skor IS NULL")->fetchAll(PDO::FETCH_ASSOC);
             foreach($maclar_h as $m) {
+                $engine->auto_ilk_11((int)$m['ev']);
+                $engine->auto_ilk_11((int)$m['dep']);
                 $s=$engine->gercekci_skor_hesapla($m['ev'],$m['dep'],$m);
                 $es=$s['ev']; $ds=$s['dep'];
                 $ed=$engine->mac_olay_uret($m['ev'],$es); $dd=$engine->mac_olay_uret($m['dep'],$ds);
@@ -194,6 +215,8 @@ if(isset($_GET['action'])) {
         $hedef_hafta = isset($_GET['hafta']) ? (int)$_GET['hafta'] : $hafta;
         $m = $pdo->query("SELECT m.*,t1.takim_adi as ev_ad,t2.takim_adi as dep_ad,t1.hucum as ev_hucum,t1.savunma as ev_savunma,t2.hucum as dep_hucum,t2.savunma as dep_savunma FROM fr_maclar m JOIN fr_takimlar t1 ON m.ev=t1.id JOIN fr_takimlar t2 ON m.dep=t2.id WHERE m.id=$mac_id AND m.ev_skor IS NULL")->fetch(PDO::FETCH_ASSOC);
         if($m) {
+            $engine->auto_ilk_11((int)$m['ev']);
+            $engine->auto_ilk_11((int)$m['dep']);
             $s = $engine->gercekci_skor_hesapla($m['ev'],$m['dep'],$m);
             $es=$s['ev']; $ds=$s['dep'];
             $ed=$engine->mac_olay_uret($m['ev'],$es); $dd=$engine->mac_olay_uret($m['dep'],$ds);
@@ -215,6 +238,8 @@ if(isset($_GET['action'])) {
         $maclar = $pdo->query("SELECT m.*,t1.takim_adi as ev_ad,t2.takim_adi as dep_ad,t1.hucum as ev_hucum,t1.savunma as ev_savunma,t2.hucum as dep_hucum,t2.savunma as dep_savunma FROM fr_maclar m JOIN fr_takimlar t1 ON m.ev=t1.id JOIN fr_takimlar t2 ON m.dep=t2.id WHERE m.hafta=$hafta AND m.ev_skor IS NULL")->fetchAll(PDO::FETCH_ASSOC);
         foreach($maclar as $m) {
             if($kullanici_takim && ($m['ev']==$kullanici_takim || $m['dep']==$kullanici_takim)) continue;
+            $engine->auto_ilk_11((int)$m['ev']);
+            $engine->auto_ilk_11((int)$m['dep']);
             $s=$engine->gercekci_skor_hesapla($m['ev'],$m['dep'],$m);
             $es=$s['ev']; $ds=$s['dep'];
             $ed=$engine->mac_olay_uret($m['ev'],$es); $dd=$engine->mac_olay_uret($m['dep'],$ds);
@@ -268,6 +293,8 @@ try {
 <style>
 :root { --fr-primary:#003f8a; --fr-secondary:#ef4135; --fr-gold:#d4af37; --bg:#0d0d0d; --panel:#1a1a1a; --border:rgba(0,63,138,0.25); --text:#f9fafb; --muted:#94a3b8; }
 body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; min-height:100vh; background-image:radial-gradient(circle at 0% 0%,rgba(0,63,138,0.12) 0%,transparent 50%),radial-gradient(circle at 100% 100%,rgba(239,65,53,0.08) 0%,transparent 50%); }
+/* Puan tablosu kontrast düzeltmesi */
+body, table, td, th, .puan-tablosu, .sira, .puan { color: #ffffff !important; background-color: #1a1a1a; }
 .font-oswald { font-family:'Oswald',sans-serif; text-transform:uppercase; }
 .pro-navbar { background:rgba(10,10,10,0.97); backdrop-filter:blur(24px); border-bottom:2px solid var(--fr-secondary); position:sticky; top:0; z-index:1000; padding:0 2rem; height:75px; display:flex; justify-content:space-between; align-items:center; }
 .nav-brand { display:flex; align-items:center; gap:10px; font-size:1.4rem; font-weight:900; color:#fff; text-decoration:none; }
@@ -331,6 +358,13 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
 .sampiyon-top4 { background:rgba(0,0,0,0.3); border-radius:8px; padding:12px 16px; margin-top:16px; }
 .sampiyon-top4 .top4-row { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.1); color:#fff; font-size:0.9rem; }
 .sampiyon-top4 .top4-row:last-child { border-bottom:none; }
+.btn-reset-sezon { background:rgba(120,60,0,0.35); border:1px solid rgba(251,191,36,0.5); color:#fde047 !important; font-weight:700; padding:6px 12px; border-radius:5px; font-size:0.78rem; text-decoration:none; transition:0.2s; }
+.btn-reset-sezon:hover { background:rgba(202,138,4,0.5); border-color:#ca8a04; }
+.btn-reset-tum { background:rgba(127,29,29,0.35); border:1px solid rgba(220,38,38,0.5); color:#fca5a5 !important; font-weight:700; padding:6px 12px; border-radius:5px; font-size:0.78rem; text-decoration:none; transition:0.2s; }
+.btn-reset-tum:hover { background:rgba(185,28,28,0.5); border-color:#b91c1c; }
+.reset-alert { padding:10px 16px; border-radius:8px; margin:0 0 12px; font-size:0.85rem; font-weight:600; }
+.reset-alert.success { background:rgba(16,185,129,0.15); border:1px solid rgba(16,185,129,0.4); color:#6ee7b7 !important; }
+.reset-alert.warning { background:rgba(251,191,36,0.1); border:1px solid rgba(251,191,36,0.4); color:#fde047 !important; }
 </style>
 </head>
 <body>
@@ -361,10 +395,22 @@ body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; 
         <?php if(!$sezon_tamam): ?>
         <a href="?action=sezonu_simule" class="btn-ao" style="background:#7f1d1d;border-color:#dc2626;color:#fca5a5;" onclick="return confirm('Ligue 1 sezonu simüle edilecek. Devam?')"><i class="fa-solid fa-forward-step"></i> Sezonu Simüle Et</a>
         <?php endif; ?>
+        <a href="?action=bu_sezon_sifirla" class="btn-reset-sezon" onclick="return confirm('Bu sezonu sıfırla?\n\nLigue 1 mevcut fikstür, puan tablosu ve maç sonuçları silinecek. Geçmiş sezon şampiyonları korunacak.')"><i class="fa-solid fa-broom me-1"></i>Bu Sezonu Sıfırla</a>
+        <a href="?action=tum_sezon_sifirla" class="btn-reset-tum" onclick="return confirm('⚠️ TÜM SEZONLARI SIFIRLA!\n\nLigue 1 TÜM GEÇMİŞİ ve ŞAMPİYON KAYITLARI silinecek.\n\nBu işlem geri alınamaz! Emin misiniz?')"><i class="fa-solid fa-fire me-1"></i>Tüm Sezonları Sıfırla</a>
     </div>
 </nav>
 
 <div class="container-fluid py-4 px-4">
+
+    <?php if(isset($_GET['sifirla'])): ?>
+    <div>
+        <?php if($_GET['sifirla'] === 'bu_sezon'): ?>
+        <div class="reset-alert success"><i class="fa-solid fa-check-circle me-2"></i>✅ Bu sezon sıfırlandı. Fikstür, puan tablosu ve maç sonuçları temizlendi. Geçmiş sezon şampiyonları korundu.</div>
+        <?php elseif($_GET['sifirla'] === 'tum_sezon'): ?>
+        <div class="reset-alert warning"><i class="fa-solid fa-rotate-left me-2"></i>🔄 Tüm sezonlar sıfırlandı. Ligue 1 geçmişi ve tüm veriler fabrika ayarlarına döndürüldü.</div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
     <?php if($sezon_tamam && $sampiyon_takim): ?>
     <!-- ŞAMPİYON BLOKU -->
